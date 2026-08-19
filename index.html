@@ -1,12 +1,11 @@
-<!doctype html>
-<html lang="en">
+<!DOCTYPE html>
+<html lang="it">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Tauri + Vue + Typescript App</title>
+    <!-- CSP gestita da tauri.conf.json (app.security.csp), non qui: un meta
+         tag hardcoded rischia di confliggere con lo schema tauri:// e l'IPC. -->
+    <title>Note</title>
   </head>
-
   <body>
     <div id="app"></div>
     <script type="module" src="/src/main.ts"></script>

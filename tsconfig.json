@@ -5,6 +5,9 @@
     "module": "ESNext",
     "lib": ["ES2020", "DOM", "DOM.Iterable"],
     "skipLibCheck": true,
+    // Componenti/stores/utils sono copiati verbatim da mac-notes (JS, non
+    // TS): allowJs li lascia entrare nel typecheck senza convertirli.
+    "allowJs": true,
 
     /* Bundler mode */
     "moduleResolution": "bundler",

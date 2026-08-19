@@ -47,8 +47,49 @@ comune ma non ancora verificato empiricamente su questa versione).
 Prima di questo porting è stato verificato separatamente se Quill si comporta
 bene in WKWebView (vedi `../editor-spike`). Risultato: sì, alla prova pratica.
 
-## Avvio
+## Installazione (macOS, via Homebrew)
+
+Stesso meccanismo di [mac-notes](https://github.com/sdiricco/mac-notes): un
+cask nel tap personale, aggiornamento manuale da terminale, nessun
+autoupdater — il controllo versione in-app (`update_check.rs`) si limita ad
+avvisare che è disponibile una nuova release.
+
+```bash
+brew tap sdiricco/mac-notes
+brew install --cask mac-notes-tauri
+```
+
+Aggiornamento:
+
+```bash
+brew upgrade --cask mac-notes-tauri
+```
+
+L'app non è firmata con un certificato Apple Developer ID: al primo avvio
+macOS mostra "sviluppatore non verificato". Tasto destro sull'app → Apri,
+oppure da terminale:
+
+```bash
+xattr -dr com.apple.quarantine "/Applications/Mac Notes Tauri.app"
+```
+
+## Windows e Linux
+
+Le build sono generate automaticamente dalla stessa release (installer NSIS
+per Windows, AppImage/deb per Linux — vedi
+[Releases](https://github.com/sdiricco/mac-notes-tauri/releases)), ma **non
+sono ancora state aperte su queste piattaforme**: compilano, non sono
+verificate. Nessun meccanismo di aggiornamento da terminale per ora — vanno
+scaricate a mano a ogni versione.
+
+## Sviluppo
 
 ```bash
 source "$HOME/.cargo/env" && pnpm tauri dev
 ```
+
+Release: pusha un tag `vX.Y.Z` — la pipeline builda tutte le piattaforme e
+crea una **release in bozza** (`releaseDraft: true`). Il controllo
+aggiornamenti in-app legge solo l'endpoint "latest release" di GitHub, che
+ignora le bozze: finché non la pubblichi a mano dalla pagina Releases, nessun
+utente la vede. Prima di pubblicare, aggiorna anche il Cask (vedi sotto).

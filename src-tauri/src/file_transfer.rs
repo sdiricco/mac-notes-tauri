@@ -64,9 +64,13 @@ pub async fn export_md(
         .set_file_name(&format!("{name}.md"))
         .blocking_save_file();
 
-    let Some(file_path) = picked else { return Ok(None) };
+    let Some(file_path) = picked else {
+        eprintln!("[mac-notes-tauri] export_md annullato dall'utente");
+        return Ok(None);
+    };
     let path = file_path.into_path().map_err(|e| e.to_string())?;
     std::fs::write(&path, markdown).map_err(|e| e.to_string())?;
+    eprintln!("[mac-notes-tauri] export_md -> {}", path.display());
 
     Ok(Some(ExportResult {
         file_path: path.display().to_string(),
@@ -82,9 +86,13 @@ pub async fn import_md(app: AppHandle) -> Result<Option<Value>, String> {
         .add_filter("Markdown", &["md", "markdown", "txt"])
         .blocking_pick_file();
 
-    let Some(file_path) = picked else { return Ok(None) };
+    let Some(file_path) = picked else {
+        eprintln!("[mac-notes-tauri] import_md annullato dall'utente");
+        return Ok(None);
+    };
     let path = file_path.into_path().map_err(|e| e.to_string())?;
     let markdown = std::fs::read_to_string(&path).map_err(|e| e.to_string())?;
+    eprintln!("[mac-notes-tauri] import_md <- {} ({} byte)", path.display(), markdown.len());
 
     Ok(Some(json!({
         "markdown": markdown,
@@ -101,12 +109,21 @@ pub async fn pick_image(app: AppHandle) -> Result<Option<Value>, String> {
         .add_filter("Immagini", &["png", "jpg", "jpeg", "gif", "webp", "svg", "bmp"])
         .blocking_pick_file();
 
-    let Some(file_path) = picked else { return Ok(None) };
+    let Some(file_path) = picked else {
+        eprintln!("[mac-notes-tauri] pick_image annullato dall'utente");
+        return Ok(None);
+    };
     let path = file_path.into_path().map_err(|e| e.to_string())?;
 
     Ok(Some(match read_image_as_data_uri(&path) {
-        Ok(data_uri) => json!({ "dataUri": data_uri }),
-        Err(code) => json!({ "error": code }),
+        Ok(data_uri) => {
+            eprintln!("[mac-notes-tauri] pick_image -> {} ({} byte base64)", path.display(), data_uri.len());
+            json!({ "dataUri": data_uri })
+        }
+        Err(code) => {
+            eprintln!("[mac-notes-tauri] pick_image ERRORE {code} su {}", path.display());
+            json!({ "error": code })
+        }
     }))
 }
 

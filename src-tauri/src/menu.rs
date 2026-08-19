@@ -153,6 +153,8 @@ pub fn set_toolbar_mode(app: &AppHandle, extended: bool) -> tauri::Result<()> {
 /// Dispatcher centrale: a differenza di Electron (una `click` per voce), qui
 /// tutti gli eventi menu arrivano a un solo handler distinto per `id`.
 pub fn handle_menu_event(app: &AppHandle, event_id: &str) {
+    eprintln!("[mac-notes-tauri] menu event: {event_id}");
+
     let send = |channel: &str, payload: Option<ToolbarModePayload>| {
         let _ = match payload {
             Some(p) => app.emit(channel, p),

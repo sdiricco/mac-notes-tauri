@@ -1,160 +1,188 @@
-<script setup lang="ts">
-import { ref } from "vue";
-import { invoke } from "@tauri-apps/api/core";
-
-const greetMsg = ref("");
-const name = ref("");
-
-async function greet() {
-  // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-  greetMsg.value = await invoke("greet", { name: name.value });
-}
-</script>
-
 <template>
-  <main class="container">
-    <h1>Welcome to Tauri + Vue</h1>
+  <div v-if="!store.ready" class="loading">
+    <Icon icon="lucide:loader-circle" class="spin" />
+  </div>
+  <template v-else>
+    <Splitter class="app-shell" :gutter-size="1">
+      <SplitterPanel
+        v-show="ui.sidebarVisible"
+        :size="15"
+        :min-size="11"
+        :max-size="22"
+        class="panel sidebar-panel"
+      >
+        <Sidebar @toggle-sidebar="ui.toggleSidebar()" />
+      </SplitterPanel>
+      <SplitterPanel :size="21" :min-size="15" :max-size="32" class="panel">
+        <NoteList ref="noteListRef" :sidebar-visible="ui.sidebarVisible" @toggle-sidebar="ui.toggleSidebar()" />
+      </SplitterPanel>
+      <SplitterPanel :size="64" class="panel">
+        <NoteEditor />
+      </SplitterPanel>
+    </Splitter>
 
-    <div class="row">
-      <a href="https://vite.dev" target="_blank">
-        <img src="/vite.svg" class="logo vite" alt="Vite logo" />
-      </a>
-      <a href="https://tauri.app" target="_blank">
-        <img src="/tauri.svg" class="logo tauri" alt="Tauri logo" />
-      </a>
-      <a href="https://vuejs.org/" target="_blank">
-        <img src="./assets/vue.svg" class="logo vue" alt="Vue logo" />
-      </a>
-    </div>
-    <p>Click on the Tauri, Vite, and Vue logos to learn more.</p>
+    <SettingsDialog />
+    <ShortcutsDialog />
+  </template>
 
-    <form class="row" @submit.prevent="greet">
-      <input id="greet-input" v-model="name" placeholder="Enter a name..." />
-      <button type="submit">Greet</button>
-    </form>
-    <p>{{ greetMsg }}</p>
-  </main>
+  <ConfirmDialog />
+  <Toast position="top-right" />
 </template>
 
-<style scoped>
-.logo.vite:hover {
-  filter: drop-shadow(0 0 2em #747bff);
-}
+<script setup>
+import { onBeforeUnmount, onMounted, ref } from 'vue'
+import Splitter from 'primevue/splitter'
+import SplitterPanel from 'primevue/splitterpanel'
+import ConfirmDialog from 'primevue/confirmdialog'
+import Toast from 'primevue/toast'
+import { Icon } from '@iconify/vue'
+import Sidebar from './components/Sidebar.vue'
+import NoteList from './components/NoteList.vue'
+import NoteEditor from './components/NoteEditor.vue'
+import SettingsDialog from './components/SettingsDialog.vue'
+import ShortcutsDialog from './components/ShortcutsDialog.vue'
+import { useNotesStore } from './stores/notes'
+import { useSettingsStore } from './stores/settings'
+import { useUiStore } from './stores/ui'
+import { useUpdateCheckStore } from './stores/updateCheck'
+import { api } from './utils/api'
 
-.logo.vue:hover {
-  filter: drop-shadow(0 0 2em #249b73);
-}
+const store = useNotesStore()
+const settings = useSettingsStore()
+const ui = useUiStore()
+const updateCheck = useUpdateCheckStore()
+const noteListRef = ref(null)
+const unsubscribers = []
 
-</style>
+onMounted(async () => {
+  settings.init()
+  updateCheck.init()
+  // allinea la spunta dei radio "Vista > Toolbar" alla preferenza persistita
+  api.syncToolbarMode(settings.toolbarMode)
+  await store.init()
+
+  unsubscribers.push(
+    api.onMenu('menu:new-note', () => store.createNote()),
+    api.onMenu('menu:new-folder', () => {
+      const folder = store.createFolder('Nuova cartella')
+      store.selectFolder(folder.id)
+    }),
+    api.onMenu('menu:duplicate-note', () => {
+      if (store.selectedNoteId) store.duplicateNote(store.selectedNoteId)
+    }),
+    api.onMenu('menu:focus-search', () => noteListRef.value?.focusSearch()),
+    api.onMenu('menu:toggle-sidebar', () => ui.toggleSidebar()),
+    api.onMenu('menu:settings', () => ui.openSettings()),
+    api.onMenu('menu:shortcuts', () => ui.openShortcuts()),
+    api.onMenu('menu:toolbar-mode', (mode) => settings.setToolbarMode(mode))
+  )
+})
+
+onBeforeUnmount(() => {
+  unsubscribers.forEach((off) => off())
+})
+</script>
+
 <style>
-:root {
-  font-family: Inter, Avenir, Helvetica, Arial, sans-serif;
-  font-size: 16px;
-  line-height: 24px;
-  font-weight: 400;
-
-  color: #0f0f0f;
-  background-color: #f6f6f6;
-
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  -webkit-text-size-adjust: 100%;
-}
-
-.container {
-  margin: 0;
-  padding-top: 10vh;
+.loading {
+  height: 100vh;
   display: flex;
-  flex-direction: column;
+  align-items: center;
   justify-content: center;
-  text-align: center;
+  font-size: 26px;
+  color: var(--icon-color);
+  -webkit-app-region: drag;
 }
-
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: 0.75s;
+.spin {
+  animation: spin 0.8s linear infinite;
 }
-
-.logo.tauri:hover {
-  filter: drop-shadow(0 0 2em #24c8db);
-}
-
-.row {
-  display: flex;
-  justify-content: center;
-}
-
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-
-a:hover {
-  color: #535bf2;
-}
-
-h1 {
-  text-align: center;
-}
-
-input,
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  color: #0f0f0f;
-  background-color: #ffffff;
-  transition: border-color 0.25s;
-  box-shadow: 0 2px 2px rgba(0, 0, 0, 0.2);
-}
-
-button {
-  cursor: pointer;
-}
-
-button:hover {
-  border-color: #396cd8;
-}
-button:active {
-  border-color: #396cd8;
-  background-color: #e8e8e8;
-}
-
-input,
-button {
-  outline: none;
-}
-
-#greet-input {
-  margin-right: 5px;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    color: #f6f6f6;
-    background-color: #2f2f2f;
-  }
-
-  a:hover {
-    color: #24c8db;
-  }
-
-  input,
-  button {
-    color: #ffffff;
-    background-color: #0f0f0f98;
-  }
-  button:active {
-    background-color: #0f0f0f69;
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
   }
 }
 
+.app-shell {
+  height: 100vh;
+  border: none !important;
+}
+
+.panel {
+  overflow: hidden;
+}
+
+.sidebar-panel {
+  background: var(--sidebar-bg);
+}
+
+.p-splitter-gutter {
+  background: var(--p-content-border-color) !important;
+}
+
+/* Toast: card scura in linea con l'app (stessa identità delle altre card
+   flottanti) invece del verde/rosso/blu piatto di default di PrimeVue.
+   La severità resta leggibile da un piccolo accento a sinistra e dal colore
+   dell'icona, non da uno sfondo colorato a piena tinta. */
+.p-toast {
+  width: 22rem;
+}
+.p-toast-message {
+  background: var(--editor-toolbar-bg);
+  border: 1px solid var(--p-content-border-color);
+  border-left: 3px solid var(--icon-color);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);
+  color: var(--p-text-color);
+  margin-bottom: 8px;
+  overflow: hidden;
+}
+.p-toast-message-content {
+  padding: 10px 12px;
+  align-items: flex-start;
+}
+.p-toast-message-success {
+  border-left-color: #3ba55d;
+}
+.p-toast-message-success .p-toast-message-icon {
+  color: #3ba55d;
+}
+.p-toast-message-info {
+  border-left-color: #3b82f6;
+}
+.p-toast-message-info .p-toast-message-icon {
+  color: #3b82f6;
+}
+.p-toast-message-warn {
+  border-left-color: #f59e0b;
+}
+.p-toast-message-warn .p-toast-message-icon {
+  color: #f59e0b;
+}
+.p-toast-message-error {
+  border-left-color: #e5484d;
+}
+.p-toast-message-error .p-toast-message-icon {
+  color: #e5484d;
+}
+.p-toast-message-text {
+  margin-left: 10px;
+}
+.p-toast-summary {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--p-text-color);
+}
+.p-toast-detail {
+  margin-top: 3px;
+  font-size: 12px;
+  color: var(--p-text-muted-color);
+}
+.p-toast-close-button {
+  color: var(--icon-color);
+  background: transparent;
+}
+.p-toast-close-button:hover {
+  background: var(--sidebar-hover-bg);
+  color: var(--p-text-color);
+}
 </style>

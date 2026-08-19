@@ -6,9 +6,16 @@ Rust.
 
 ## Stato
 
-**Funzionante e verificato**: crea/salva/carica note, persistenza su disco
+**Verificato via log + file su disco**: crea/salva/carica note, persistenza
 identica all'originale (una nota per file JSON in
-`~/Library/Application Support/<identifier>/notes/`).
+`~/Library/Application Support/<identifier>/notes/`), sopravvive al riavvio.
+
+**Compila e gira, non ancora esercitato manualmente**: dialoghi nativi
+(export/import markdown, scelta immagine — richiedono un click reale, non
+automatizzabile da qui) e menu nativo. Vedi [CHECKLIST.md](CHECKLIST.md) per
+cosa provare e perché proprio quei punti contano (uno in particolare: i
+dialoghi usano l'API *blocking* di Tauri dentro comandi `async`, un pattern
+comune ma non ancora verificato empiricamente su questa versione).
 
 ## Cosa è stato portato
 

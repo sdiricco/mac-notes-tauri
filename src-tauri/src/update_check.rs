@@ -7,7 +7,7 @@
 use serde::Serialize;
 use serde_json::Value;
 
-const REPO: &str = "sdiricco/mac-notes";
+const REPO: &str = "sdiricco/mac-notes-tauri";
 
 #[derive(Debug, Serialize, Clone)]
 pub struct UpdateStatus {

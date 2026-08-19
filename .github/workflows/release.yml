@@ -1,0 +1,123 @@
+name: Release
+
+# Ogni tag "vX.Y.Z" builda l'app su mac (binario universale arm64+Intel),
+# Windows (x64 + arm64) e Linux (x64), poi pubblica una release GitHub con
+# gli artefatti. Job separati per piattaforma: build indipendenti, un
+# fallimento su un OS non blocca gli altri (fail-fast: false).
+#
+# ATTENZIONE — parita' di piattaforma non e' parita' di verifica: solo macOS
+# e' stato testato manualmente con questo frontend (Quill + WKWebView, vedi
+# CHECKLIST.md). Windows (WebView2) e Linux (WebKitGTK) compilano ma non sono
+# mai stati aperti: possibili differenze di rendering non ancora scoperte,
+# stesso tipo di rischio gia' documentato per WKWebView prima di verificarlo.
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release-mac:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+
+      - name: Install dipendenze frontend
+        run: npm ci
+
+      - name: Build e pubblica (macOS universale)
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: 'Mac Notes Tauri ${{ github.ref_name }}'
+          releaseBody: |
+            macOS: l'app non e' firmata con un certificato Apple Developer ID.
+            Al primo avvio, tasto destro sull'app > Apri, oppure:
+            `xattr -dr com.apple.quarantine "/Applications/Mac Notes Tauri.app"`
+
+            Windows e Linux: compilati automaticamente ma non ancora testati
+            a mano su questo progetto.
+          releaseDraft: true
+          prerelease: false
+          args: --target universal-apple-darwin
+
+  release-windows:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x64
+            target: x86_64-pc-windows-msvc
+          - arch: arm64
+            target: aarch64-pc-windows-msvc
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install dipendenze frontend
+        run: npm ci
+
+      - name: Build e pubblica (Windows ${{ matrix.arch }})
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: 'Mac Notes Tauri ${{ github.ref_name }}'
+          releaseDraft: true
+          prerelease: false
+          args: --target ${{ matrix.target }}
+
+  release-linux:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      # Librerie di sistema richieste dal bundler Tauri su Linux (webview,
+      # AppIndicator per la tray icon, rsvg per le icone).
+      - name: Install dipendenze di sistema
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - name: Install dipendenze frontend
+        run: npm ci
+
+      - name: Build e pubblica (Linux x64)
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: 'Mac Notes Tauri ${{ github.ref_name }}'
+          releaseDraft: true
+          prerelease: false

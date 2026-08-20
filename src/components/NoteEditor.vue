@@ -544,6 +544,51 @@ async function copyNote() {
 .floating-toolbar :deep(.ql-icon-picker .ql-picker-label) {
   padding: 2px 4px;
 }
+/* Colore testo ed evidenziazione sono due .ql-formats separati (ognuno il
+   proprio dropdown), quindi la regola generica ".ql-formats { border-right
+   ... }" disegna un divisorio anche fra loro due — visivamente sbagliato,
+   sono la stessa "famiglia" di controllo. Tolto solo sul primo dei due. */
+.floating-toolbar :deep(.color-dropdown) {
+  border-right: none;
+  margin-right: 0;
+  padding-right: 0;
+}
+
+/* Rettangolo dietro la "A" dell'icona evidenziazione (vedi HIGHLIGHT_ICON):
+   solo contorno finché nessun colore è applicato, pieno quando lo è —
+   riempimento gestito inline da syncColorIndicators, non da qui. Il picker
+   vero (Vue3ColorPicker) è un overlay Teleport, stile in QuillEditor.vue. */
+.floating-toolbar :deep(.highlight-dropdown .color-indicator) {
+  fill: none;
+  stroke: var(--icon-color);
+  stroke-width: 1.2px;
+}
+
+/* Tooltip custom via data-tooltip invece dell'attributo title nativo: in
+   WKWebView il tooltip nativo è lento/inconsistente su bottoni dentro un
+   pannello position:absolute — stesso principio già seguito per il picker
+   colore/evidenziazione, non fidarsi del comportamento nativo qui. */
+.floating-toolbar :deep([data-tooltip]) {
+  position: relative;
+}
+.floating-toolbar :deep([data-tooltip]):hover::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-top: 6px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: var(--editor-toolbar-bg);
+  border: 1px solid var(--p-content-border-color);
+  color: var(--p-text-color);
+  font-size: 11px;
+  white-space: nowrap;
+  z-index: 30;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+  pointer-events: none;
+}
 .floating-toolbar :deep(.ql-picker-label:hover .ql-stroke),
 .floating-toolbar :deep(.ql-picker.ql-expanded .ql-picker-label .ql-stroke) {
   stroke: var(--p-text-color);

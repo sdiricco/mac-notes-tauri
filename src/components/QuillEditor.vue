@@ -170,6 +170,49 @@
       </div>
     </div>
   </div>
+
+  <!-- Il bottone che apre questo overlay vive fuori dal template di questo
+       componente (iniettato da Quill/noi in toolbarContainer, vedi
+       openColorPicker), quindi non c'è un antenato comune su cui ancorare
+       un position:absolute — Teleport + position:fixed calcolata al click. -->
+  <Teleport to="body">
+    <div
+      v-if="colorPickerOpen"
+      ref="colorPickerEl"
+      class="color-picker-overlay"
+      :style="colorPickerPos"
+      @mousedown.stop
+    >
+      <Vue3ColorPicker
+        v-model="colorPickerValue"
+        mode="solid"
+        :theme="settings.isDark ? 'dark' : 'light'"
+        type="HEX"
+        :showEyeDrop="false"
+        :showColorList="true"
+        @update:model-value="(v) => onColorPicked('color', v)"
+      />
+    </div>
+  </Teleport>
+  <Teleport to="body">
+    <div
+      v-if="highlightPickerOpen"
+      ref="highlightPickerEl"
+      class="color-picker-overlay"
+      :style="colorPickerPos"
+      @mousedown.stop
+    >
+      <Vue3ColorPicker
+        v-model="highlightPickerValue"
+        mode="solid"
+        :theme="settings.isDark ? 'dark' : 'light'"
+        type="HEX"
+        :showEyeDrop="false"
+        :showColorList="true"
+        @update:model-value="(v) => onColorPicked('background', v)"
+      />
+    </div>
+  </Teleport>
 </template>
 
 <script setup>
@@ -183,6 +226,8 @@ import { useSettingsStore } from '../stores/settings'
 import { api } from '../utils/api'
 import { shortcut } from '../utils/shortcuts'
 import { htmlToMarkdown } from '../utils/markdown'
+import { Vue3ColorPicker } from '@cyhnkckali/vue3-color-picker'
+import '@cyhnkckali/vue3-color-picker/dist/style.css'
 
 const settings = useSettingsStore()
 const toast = useToast()
@@ -305,7 +350,6 @@ const G_INLINE = group(
   btn('ql-strike'),
   btn('ql-code')
 )
-const G_COLOR = group('<select class="ql-color"></select>', '<select class="ql-background"></select>')
 const G_BLOCK = group(
   `
   <select class="ql-list">
@@ -336,7 +380,7 @@ const G_CLEAN = group(btn('ql-clean'))
 // Toolbar non ci aggancia nessun handler.
 const dropdown = (name, icon, tip, ...groups) => `
   <span class="ql-formats toolbar-dropdown ${name}">
-    <button type="button" class="toolbar-dropdown-toggle ${name}-toggle" title="${tip}">${icon}</button>
+    <button type="button" class="toolbar-dropdown-toggle ${name}-toggle" data-tooltip="${tip}" aria-label="${tip}">${icon}</button>
     <div class="toolbar-dropdown-panel ${name}-panel">${groups.join('')}</div>
   </span>
 `
@@ -348,6 +392,89 @@ const OVERFLOW_ICON = `
   </svg>
 `
 const overflow = (...groups) => dropdown('toolbar-overflow', OVERFLOW_ICON, 'Altre opzioni di formattazione', ...groups)
+
+// Bottoni custom al posto dei nativi <select class="ql-color">/"ql-background"
+// di Quill: quel widget (Quill lo ricostruisce a runtime in un ql-picker con
+// swatch, stato "espanso" e label SVG iniettata via JS) non mostra l'icona
+// della label in WKWebView — bug riproducibile solo su quel motore, mai in
+// Chromium, con CSS e markup verificati corretti. Stesso identico pattern di
+// style-dropdown/overflow qui sopra (bottone statico + pannello), che invece
+// funziona ovunque: aggira il problema alla radice invece di inseguirlo.
+// "color-indicator" sulla riga/barra sotto il glifo: sincronizzata a mano su
+// ogni cambio di selezione (vedi syncColorIndicators), stesso principio di
+// syncStyleToggleActive qui sotto — mostra il colore/evidenziazione applicato
+// al testo sotto il cursore, come faceva il picker nativo di Quill.
+const COLOR_ICON = `
+  <svg viewBox="0 0 18 18">
+    <line class="ql-stroke color-indicator" x1="3" x2="15" y1="15" y2="15"></line>
+    <polyline class="ql-stroke" points="5.5 11 9 3 12.5 11"></polyline>
+    <line class="ql-stroke" x1="11.63" x2="6.38" y1="9" y2="9"></line>
+  </svg>
+`
+// Stessa "A" dell'icona colore, non un pennarello: comunica meglio che è la
+// stessa famiglia di controllo (testo) applicata a una proprietà diversa
+// (sfondo invece di colore). Il rettangolo dietro le lettere è l'indicatore
+// — vuoto (nessun riempimento) quando non c'è evidenziazione, colorato
+// quando c'è, sincronizzato in syncColorIndicators come per COLOR_ICON.
+const HIGHLIGHT_ICON = `
+  <svg viewBox="0 0 18 18">
+    <rect class="color-indicator" x="2" y="6.3" width="14" height="6.7" rx="1.2"></rect>
+    <polyline class="ql-stroke" points="5.5 11 9 3 12.5 11"></polyline>
+    <line class="ql-stroke" x1="11.63" x2="6.38" y1="9" y2="9"></line>
+  </svg>
+`
+// Nessun pannello iniettato qui (gruppi vuoti): il color picker vero è un
+// componente Vue (Vue3ColorPicker, vedi <template>), non ottenibile con le
+// stringhe HTML imperative usate per il resto della toolbar. Il bottone
+// apre/chiude un overlay Vue posizionato sopra questo toggle — vedi
+// openColorPicker più sotto.
+// Nessun pannello iniettato qui (gruppi vuoti): il color picker vero è un
+// componente Vue (Vue3ColorPicker, vedi <template>), non ottenibile con le
+// stringhe HTML imperative usate per il resto della toolbar. Il bottone
+// apre/chiude direttamente l'overlay Vue — vedi openColorPicker più sotto.
+const colorDropdown = () => dropdown('color-dropdown', COLOR_ICON, 'Colore del testo')
+const highlightDropdown = () => dropdown('highlight-dropdown', HIGHLIGHT_ICON, 'Colore di evidenziazione')
+
+// Palette usata solo per pre-popolare la cronologia di Vue3ColorPicker al
+// primo avvio (vedi hasUsableColorList sotto) — non c'è più una griglia di
+// quadretti nostra, il picker ha già la sua.
+const DEFAULT_COLOR_PALETTE = [
+  '#000000', '#ffffff', '#e60000', '#ff9900', '#ffff00', '#008a00',
+  '#0066cc', '#9933ff', '#facccc', '#ffebcc', '#ffffcc', '#cce8cc',
+  '#cce0f5', '#ebd6ff'
+]
+
+// Vue3ColorPicker tiene la sua lista di colori rapidi in localStorage
+// (chiave "ck-cp-local-color-list", condivisa fra il picker del testo e
+// quello di evidenziazione — non è configurabile via prop) e parte vuota
+// finché l'utente non salva un colore da sé. La si pre-popola con la stessa
+// palette rapida, ma solo se non c'è già una lista utilizzabile: non basta
+// guardare se la chiave esiste, perché il componente stesso può avere già
+// scritto "[]" (lista vuota) in un avvio precedente — una stringa non vuota,
+// quindi "vera" per un controllo booleano ingenuo, ma senza colori dentro.
+// Va guardato il contenuto, non la sola presenza della chiave.
+function hasUsableColorList() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem('ck-cp-local-color-list') || '[]')
+    return Array.isArray(parsed) && parsed.length > 0
+  } catch {
+    return false
+  }
+}
+// Versione della palette di default: forza una pulizia UNA TANTUM per
+// versione (non a ogni avvio, altrimenti cancellerebbe i colori che
+// l'utente ha scelto lui). Serve perché il browser di test (Chromium, usato
+// per verificare le modifiche prima di questa) e la finestra Tauri vera
+// (WKWebView) sono due applicazioni diverse anche puntando alla stessa URL
+// in dev: non condividono lo storage, quindi un fix verificato di là non è
+// mai arrivato di qua. Bump della versione se serve un altro reset in futuro.
+const COLOR_PALETTE_RESET_VERSION = 'v1'
+if (localStorage.getItem('ck-cp-reset-version') !== COLOR_PALETTE_RESET_VERSION) {
+  localStorage.setItem('ck-cp-local-color-list', JSON.stringify(DEFAULT_COLOR_PALETTE))
+  localStorage.setItem('ck-cp-reset-version', COLOR_PALETTE_RESET_VERSION)
+} else if (!hasUsableColorList()) {
+  localStorage.setItem('ck-cp-local-color-list', JSON.stringify(DEFAULT_COLOR_PALETTE))
+}
 
 // Stesse doppie frecce su/giù che Quill disegna nei suoi ".ql-picker-label"
 // (titolo, lista): senza, "Aa" è testo puro e non comunica di essere un menu
@@ -369,6 +496,7 @@ const styleDropdown = () =>
     `Stile testo: grassetto (${shortcut('mod+B')}), corsivo (${shortcut('mod+I')}), sottolineato (${shortcut('mod+U')}), barrato (${shortcut('mod+shift+X')}), codice inline (${shortcut('mod+E')})`,
     G_INLINE
   )
+const G_COLOR = colorDropdown() + highlightDropdown()
 
 // Due layout, scelti dal menu "Vista > Toolbar" (vedi main/menu.js) e
 // persistiti in settings.toolbarMode:
@@ -393,8 +521,6 @@ const TOOLBAR_TOOLTIPS = {
   'ql-underline': `Sottolineato (${shortcut('mod+U')})`,
   'ql-strike': `Barrato (${shortcut('mod+shift+X')})`,
   'ql-code': `Codice inline (${shortcut('mod+E')})`,
-  'ql-color': 'Colore del testo',
-  'ql-background': 'Colore di evidenziazione',
   'ql-list': `Elenco: numerato (${shortcut('mod+shift+7')}), puntato (${shortcut('mod+shift+8')}), di controllo (${shortcut('mod+shift+9')})`,
   'ql-blockquote': `Citazione (${shortcut('mod+shift+B')})`,
   'ql-link': `Inserisci link (${shortcut('mod+K')})`,
@@ -404,11 +530,19 @@ const TOOLBAR_TOOLTIPS = {
   'ql-clean': 'Rimuovi formattazione'
 }
 
+// data-tooltip/aria-label invece di title: stesso motivo del pannello
+// colore/evidenziazione (vedi dropdown() più sotto) — il tooltip nativo del
+// browser è lento/inconsistente in WKWebView, quindi lo ricostruiamo in CSS
+// (vedi .floating-toolbar :deep([data-tooltip]) in NoteEditor.vue) per tutti
+// i controlli della toolbar, non solo per i due dropdown custom.
 function applyToolbarTooltips(container) {
   if (!container) return
   Object.entries(TOOLBAR_TOOLTIPS).forEach(([cls, tip]) => {
     const target = container.querySelector(`button.${cls}`) || container.querySelector(`.${cls} .ql-picker-label`)
-    if (target) target.setAttribute('title', tip)
+    if (target) {
+      target.setAttribute('data-tooltip', tip)
+      target.setAttribute('aria-label', tip)
+    }
   })
 }
 
@@ -1010,6 +1144,48 @@ async function runContextAction(value) {
 // (in estesa non ce n'è nessuno).
 let toolbarDropdownEls = []
 
+// Vue3ColorPicker è un componente Vue vero, quindi vive nel <template> (vedi
+// in fondo) invece che nell'HTML imperativo del resto della toolbar. Aperto
+// come overlay posizionato sopra il bottone che lo ha invocato — position
+// calcolata al click, non con CSS, perché il bottone che lo apre non è un
+// elemento del template di questo componente (è iniettato da Quill/noi nel
+// contenitore esterno) e non c'è un antenato comune su cui ancorare un
+// position:absolute.
+const colorPickerOpen = ref(false)
+const highlightPickerOpen = ref(false)
+const colorPickerPos = ref({ top: '0px', left: '0px' })
+const colorPickerValue = ref('#000000')
+const highlightPickerValue = ref('#ffff00')
+const colorPickerEl = ref(null)
+const highlightPickerEl = ref(null)
+// Assegnati in onMounted, letti da onGlobalMousedown: due funzioni separate,
+// serve una variabile condivisa a livello di modulo (stesso motivo di `quill`).
+let colorToggleWrapperEl = null
+let highlightToggleWrapperEl = null
+
+// Chiamata dal bottone toggle stesso: apre/chiude l'overlay Vue3ColorPicker.
+function openColorPicker(format, toggleEl) {
+  const rect = toggleEl.getBoundingClientRect()
+  colorPickerPos.value = { top: `${rect.bottom + 6}px`, left: `${rect.left}px` }
+  if (format === 'color') {
+    highlightPickerOpen.value = false
+    colorPickerOpen.value = !colorPickerOpen.value
+  } else {
+    colorPickerOpen.value = false
+    highlightPickerOpen.value = !highlightPickerOpen.value
+  }
+}
+
+// @update:model-value di Vue3ColorPicker spara ad ogni trascinamento nel
+// picker, non solo alla conferma: va bene, è la stessa anteprima live che
+// dava già <input type="color">. Il focus va ripristinato a mano per lo
+// stesso motivo dei vecchi swatch-btn: aprire il picker toglie la selezione
+// all'editor, e Quill la ricorda solo se richiamata con quill.focus().
+function onColorPicked(format, value) {
+  quill.focus()
+  quill.format(format, value)
+}
+
 function toggleDropdown(el, event) {
   event.stopPropagation()
   const wasOpen = el.classList.contains('is-open')
@@ -1027,6 +1203,25 @@ function onGlobalMousedown(event) {
   toolbarDropdownEls.forEach((el) => {
     if (el.classList.contains('is-open') && !el.contains(event.target)) el.classList.remove('is-open')
   })
+  // Il picker colore è un Teleport verso <body>: non è mai dentro
+  // toolbarContainer, quindi non lo tocca il forEach sopra. Il click sul
+  // bottone che lo apre non deve richiuderlo nello stesso giro (altrimenti
+  // toggle e mousedown-fuori si annullerebbero a vicenda): entrambi i
+  // toggle sono esclusi esplicitamente dal controllo "fuori".
+  if (
+    colorPickerOpen.value &&
+    !colorPickerEl.value?.contains(event.target) &&
+    !colorToggleWrapperEl?.contains(event.target)
+  ) {
+    colorPickerOpen.value = false
+  }
+  if (
+    highlightPickerOpen.value &&
+    !highlightPickerEl.value?.contains(event.target) &&
+    !highlightToggleWrapperEl?.contains(event.target)
+  ) {
+    highlightPickerOpen.value = false
+  }
 }
 
 // Il tasto destro su una cella apre il menu della tabella (righe/colonne,
@@ -1104,6 +1299,41 @@ onMounted(async () => {
     })
   }
 
+  // Bottoni colore/evidenziazione (vedi colorDropdown/highlightDropdown sopra):
+  // niente <select>, quindi il modulo Toolbar di Quill non li vede — il
+  // formato va applicato a mano allo swatch cliccato.
+  const colorEl = props.toolbarContainer?.querySelector('.color-dropdown') || null
+  const highlightEl = props.toolbarContainer?.querySelector('.highlight-dropdown') || null
+  const colorIndicatorEl = colorEl?.querySelector('.color-indicator') || null
+  const highlightIndicatorEl = highlightEl?.querySelector('.color-indicator') || null
+  colorToggleWrapperEl = colorEl
+  highlightToggleWrapperEl = highlightEl
+
+  // Niente pannello da aprire/chiudere via classe qui (vedi colorDropdown/
+  // highlightDropdown sopra): il toggle apre l'overlay Vue3ColorPicker,
+  // gestito con lo stato reattivo dichiarato a inizio file.
+  colorEl?.querySelector('.toolbar-dropdown-toggle')?.addEventListener('click', (event) => {
+    openColorPicker('color', event.currentTarget)
+  })
+  highlightEl?.querySelector('.toolbar-dropdown-toggle')?.addEventListener('click', (event) => {
+    openColorPicker('background', event.currentTarget)
+  })
+
+  // Riflette sull'icona il colore/evidenziazione applicato al testo sotto il
+  // cursore, come faceva il picker nativo di Quill. Stile inline invece di
+  // una classe perché il valore è arbitrario (uno qualsiasi dei 14 colori, o
+  // uno importato da fuori l'app): non enumerabile in CSS. Stringa vuota
+  // rimuove l'override e fa tornare al colore neutro di .ql-stroke/.ql-fill.
+  function syncColorIndicators() {
+    const range = quill.getSelection()
+    const format = range ? quill.getFormat(range) : {}
+    if (colorIndicatorEl) colorIndicatorEl.style.stroke = format.color || ''
+    // Il rettangolo di sfondo di HIGHLIGHT_ICON parte "vuoto" (solo contorno,
+    // vedi CSS): '' toglie l'override e torna a quello stato invece di
+    // riempirlo di nero, che sarebbe il default SVG di un <rect> senza fill.
+    if (highlightIndicatorEl) highlightIndicatorEl.style.fill = format.background || ''
+  }
+
   // Raggruppando i 5 stili sotto "Aa" si perde il segnale che quill dà da
   // solo ai bottoni ql-* (classe ql-active in base al formato sotto il
   // cursore): quill non lo applica al nostro toggle custom, quindi lo
@@ -1138,6 +1368,7 @@ onMounted(async () => {
   })
 
   quill.on('editor-change', syncStyleToggleActive)
+  quill.on('editor-change', syncColorIndicators)
 })
 
 function applySpellcheck() {
@@ -1631,5 +1862,17 @@ onBeforeUnmount(() => {
 .quill-editor :deep(.ql-code-block-container .ql-ui option) {
   background: var(--card-bg);
   color: var(--p-text-color);
+}
+
+/* Overlay del color picker (vedi Teleport in fondo al template). position
+   qui è "fixed" perché arriva da colorPickerPos, calcolata al click contro
+   le coordinate della finestra — coerente col fatto che l'elemento è
+   teletrasportato fuori da qualunque contenitore posizionato. */
+.color-picker-overlay {
+  position: fixed;
+  z-index: 1000;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  border-radius: 10px;
+  overflow: hidden;
 }
 </style>

@@ -1,6 +1,6 @@
 [package]
 name = "mac-notes-tauri"
-version = "0.1.0"
+version = "0.2.0"
 description = "Porting Tauri di Mac Notes — frontend Vue invariato, backend Rust"
 authors = ["Simone Di Ricco"]
 edition = "2021"
@@ -13,7 +13,10 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = [] }
+# "devtools": abilita "Ispeziona elemento" col tasto destro anche nelle build
+# release, non solo in dev. Utile finche' l'app non ha un pubblico esterno da
+# proteggere da un'ispezione troppo facile del proprio frontend.
+tauri = { version = "2", features = ["devtools"] }
 tauri-plugin-opener = "2"
 tauri-plugin-dialog = "2"
 serde = { version = "1", features = ["derive"] }

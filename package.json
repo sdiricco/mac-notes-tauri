@@ -1,7 +1,7 @@
 {
   "name": "mac-notes-tauri",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -10,6 +10,7 @@
     "tauri": "tauri"
   },
   "dependencies": {
+    "@cyhnkckali/vue3-color-picker": "^2.1.7",
     "@iconify-json/lucide": "^1.2.124",
     "@iconify/vue": "^5.0.1",
     "@primevue/themes": "^4.5.4",

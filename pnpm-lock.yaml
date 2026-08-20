@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@cyhnkckali/vue3-color-picker':
+        specifier: ^2.1.7
+        version: 2.1.7(vue@3.5.41(typescript@5.6.3))
       '@iconify-json/lucide':
         specifier: ^1.2.124
         version: 1.2.124
@@ -94,6 +97,11 @@ packages:
   '@babel/types@7.29.8':
     resolution: {integrity: sha512-Vj1jF3cPfxg7OAfoI7QnVKLoILlm2JF9pnVHrX8qx7AHMiYWT+NDAA7jChlNgRS4WTLc/fD1lXLmPixluj+3Gg==}
     engines: {node: '>=6.9.0'}
+
+  '@cyhnkckali/vue3-color-picker@2.1.7':
+    resolution: {integrity: sha512-Vw4IM4aKHbJkNwuLsyVdfLm727uIkazpbFjHFOwsj03J2uZqy4TKwmX+83zHIXp2+ELCXFNULXgbETiFUzS+Eg==}
+    peerDependencies:
+      vue: ^3.3.8
 
   '@esbuild/aix-ppc64@0.25.12':
     resolution: {integrity: sha512-Hhmwd6CInZ3dwpuGTF8fJG6yoWmsToE+vYgD4nytZVxcu1ulHpUQRAB1UJ8+N1Am3Mz4+xOByoQoSZf4D+CpkA==}
@@ -848,6 +856,10 @@ snapshots:
     dependencies:
       '@babel/helper-string-parser': 7.29.7
       '@babel/helper-validator-identifier': 7.29.7
+
+  '@cyhnkckali/vue3-color-picker@2.1.7(vue@3.5.41(typescript@5.6.3))':
+    dependencies:
+      vue: 3.5.41(typescript@5.6.3)
 
   '@esbuild/aix-ppc64@0.25.12':
     optional: true

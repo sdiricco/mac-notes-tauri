@@ -1,9 +1,13 @@
 name: Release
 
 # Ogni tag "vX.Y.Z" builda l'app su mac (binario universale arm64+Intel),
-# Windows (x64 + arm64) e Linux (x64), poi pubblica una release GitHub con
-# gli artefatti. Job separati per piattaforma: build indipendenti, un
-# fallimento su un OS non blocca gli altri (fail-fast: false).
+# Windows (x64 + arm64) e Linux (x64 + arm64), poi pubblica una release
+# GitHub con gli artefatti. Job separati per piattaforma: build
+# indipendenti, un fallimento su un OS non blocca gli altri (fail-fast: false).
+#
+# Linux arm64 gira nativamente su runner ubuntu-*-arm (niente cross-compile:
+# le librerie di sistema di webkit2gtk/GTK sono un incubo da cross-compilare,
+# un runner con l'hardware giusto evita il problema alla radice).
 #
 # ATTENZIONE — parita' di piattaforma non e' parita' di verifica: solo macOS
 # e' stato testato manualmente con questo frontend (Quill + WKWebView, vedi
@@ -99,7 +103,15 @@ jobs:
           args: --target ${{ matrix.target }}
 
   release-linux:
-    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x64
+            runner: ubuntu-22.04
+          - arch: arm64
+            runner: ubuntu-22.04-arm
+    runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
 
@@ -124,7 +136,7 @@ jobs:
       - name: Install dipendenze frontend
         run: pnpm install --frozen-lockfile
 
-      - name: Build e pubblica (Linux x64)
+      - name: Build e pubblica (Linux ${{ matrix.arch }})
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

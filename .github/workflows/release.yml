@@ -127,11 +127,13 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
 
       # Librerie di sistema richieste dal bundler Tauri su Linux (webview,
-      # AppIndicator per la tray icon, rsvg per le icone).
+      # AppIndicator per la tray icon, rsvg per le icone, xdg-utils per
+      # xdg-open — quest'ultimo assente di default sul runner arm64, la
+      # build fallisce con "xdg-open binary not found" se manca).
       - name: Install dipendenze di sistema
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf xdg-utils
 
       - name: Install dipendenze frontend
         run: pnpm install --frozen-lockfile

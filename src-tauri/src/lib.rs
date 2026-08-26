@@ -8,7 +8,7 @@ mod store;
 mod update_check;
 
 use serde_json::Value;
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, Manager, Theme};
 use tauri_plugin_opener::OpenerExt;
 
 #[tauri::command]
@@ -66,6 +66,21 @@ fn update_check_app_version(app: AppHandle) -> String {
     app.package_info().version.to_string()
 }
 
+// Sincronizza l'aspetto nativo della finestra (titolo, bottoni di sistema)
+// con il tema scelto nell'app: con titleBarStyle "Visible" il colore del
+// testo del titolo lo decide macOS in base al Theme della NSWindow, non al
+// contenuto della webview — senza questa chiamata restava sul chiaro di
+// default anche a contenuto scuro, rendendo il titolo nero su sfondo scuro.
+#[tauri::command]
+fn set_window_theme(app: AppHandle, dark: bool) -> Result<(), String> {
+    if let Some(window) = app.get_webview_window("main") {
+        window
+            .set_theme(Some(if dark { Theme::Dark } else { Theme::Light }))
+            .map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -107,6 +122,7 @@ pub fn run() {
             menu_sync_toolbar_mode,
             update_check_run,
             update_check_app_version,
+            set_window_theme,
             file_transfer::export_md,
             file_transfer::import_md,
             file_transfer::pick_image,

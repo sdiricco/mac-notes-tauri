@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import { invoke } from '@tauri-apps/api/core'
 
 const KEY = 'mac-notes-settings'
 const media = window.matchMedia('(prefers-color-scheme: dark)')
@@ -16,6 +17,15 @@ export function applyThemeEarly() {
   const { theme = 'system' } = loadSaved()
   const dark = theme === 'dark' || (theme === 'system' && media.matches)
   document.documentElement.classList.toggle('dark-mode', dark)
+  // Sincronizza anche l'aspetto nativo della finestra (titolo, bottoni di
+  // sistema): con titleBarStyle "Visible" il colore del testo del titolo lo
+  // decide macOS in base al Theme della NSWindow, non al contenuto della
+  // webview — senza questo il titolo restava chiaro (nero su sfondo scuro)
+  // anche con l'app in dark mode. Fire-and-forget: non c'è nulla da
+  // attendere prima del mount, e non è disponibile fuori da Tauri (vedi
+  // utils/api.js — qui non usiamo il fallback perché non è un dato
+  // salvato, solo un side-effect innocuo se manca).
+  invoke('set_window_theme', { dark }).catch(() => {})
 }
 
 export const useSettingsStore = defineStore('settings', {
@@ -44,6 +54,7 @@ export const useSettingsStore = defineStore('settings', {
 
     applyTheme() {
       document.documentElement.classList.toggle('dark-mode', this.isDark)
+      invoke('set_window_theme', { dark: this.isDark }).catch(() => {})
     },
 
     setTheme(theme) {

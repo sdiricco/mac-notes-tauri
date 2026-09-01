@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Dichiara il supporto al dark mode. Senza questa chiave macOS applica
+	     la compatibilità legacy e forza l'aspetto chiaro sulla finestra: il
+	     titolo restava nero anche con l'app in tema scuro, e la chiamata
+	     set_window_theme (vedi lib.rs) veniva ignorata. Nell'app Electron
+	     originale la stessa cosa era ottenuta con "darkModeSupport: true"
+	     in electron-builder, che genera esattamente questa chiave. -->
+	<key>NSRequiresAquaSystemAppearance</key>
+	<false/>
+</dict>
+</plist>

@@ -406,12 +406,13 @@ defineExpose({ focusSearch: () => searchInput.value?.focus() })
 </script>
 
 <style scoped>
+/* Nessun border-right: la linea di separazione la disegna il divisorio
+   ridimensionabile in App.vue, altrimenti se ne vedrebbero due. */
 .note-list {
   height: 100%;
   display: flex;
   flex-direction: column;
   background: var(--list-bg);
-  border-right: 1px solid var(--p-content-border-color);
 }
 
 /* Nessuna altezza fissa: era una striscia draggabile duplicata, la stessa

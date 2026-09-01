@@ -56,7 +56,6 @@ export const useNotesStore = defineStore('notes', {
     notes: [],
     selectedFolderId: ALL,
     selectedNoteId: null,
-    searchQuery: '',
     ready: false
   }),
 
@@ -74,19 +73,12 @@ export const useNotesStore = defineStore('notes', {
 
     visibleNotes: (state) => {
       const settings = useSettingsStore()
-      const query = state.searchQuery.trim().toLowerCase()
       let list = state.notes.filter((n) => {
         if (state.selectedFolderId === TRASH) return n.trashed
         if (n.trashed) return false
         if (state.selectedFolderId === ALL) return true
         return n.folderId === state.selectedFolderId
       })
-      if (query) {
-        list = list.filter((n) => {
-          const haystack = `${n.title} ${stripHtml(n.content)}`.toLowerCase()
-          return haystack.includes(query)
-        })
-      }
       if (settings.pinnedOnly && state.selectedFolderId !== TRASH) {
         list = list.filter((n) => n.pinned)
       }
@@ -120,12 +112,23 @@ export const useNotesStore = defineStore('notes', {
 
     selectFolder(folderId) {
       this.selectedFolderId = folderId
-      this.searchQuery = ''
       const first = this.visibleNotes[0]
       this.selectedNoteId = first ? first.id : null
     },
 
     selectNote(noteId) {
+      this.selectedNoteId = noteId
+    },
+
+    // Apre una nota trovata dalla ricerca globale, che puo' stare in una
+    // cartella diversa da quella selezionata: si passa alla vista che la
+    // contiene sicuramente, altrimenti la lista non la mostrerebbe.
+    // selectedFolderId e' assegnato direttamente e non via selectFolder(),
+    // che sovrascriverebbe selectedNoteId con la prima nota visibile.
+    revealNote(noteId) {
+      const note = this.notes.find((n) => n.id === noteId)
+      if (!note) return
+      this.selectedFolderId = note.trashed ? TRASH : ALL
       this.selectedNoteId = noteId
     },
 
@@ -154,11 +157,8 @@ export const useNotesStore = defineStore('notes', {
       // visibleNotes cade sul confronto n.folderId === null e mostrerebbe solo
       // le note senza cartella, con nessuna voce attiva nella sidebar.
       this.selectedFolderId = targetFolder || ALL
-      // una ricerca attiva filtrerebbe via la nota appena creata (titolo e
-      // contenuto vuoti non possono corrispondere), facendola sembrare persa;
-      // stesso discorso per il filtro "solo preferiti", dato che nasce non
-      // preferita
-      this.searchQuery = ''
+      // il filtro "solo preferiti" nasconderebbe la nota appena creata,
+      // facendola sembrare persa: nasce non preferita
       useSettingsStore().setPinnedOnly(false)
       this.selectedNoteId = note.id
       saveNoteNow(note)

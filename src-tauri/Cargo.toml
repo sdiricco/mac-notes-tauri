@@ -1,7 +1,7 @@
 [package]
 name = "mac-notes-tauri"
-version = "0.3.0"
-description = "Porting Tauri di Mac Notes — frontend Vue invariato, backend Rust"
+version = "0.4.0"
+description = "App di note in Tauri: frontend Vue, backend Rust — nata come porting di mac-notes"
 authors = ["Simone Di Ricco"]
 edition = "2021"
 

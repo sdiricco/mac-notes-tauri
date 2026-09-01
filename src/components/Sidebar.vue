@@ -1,12 +1,5 @@
 <template>
   <aside class="sidebar">
-    <div class="sidebar-topbar">
-      <div class="drag-spacer"></div>
-      <button class="icon-btn" title="Nascondi sidebar" @click="emit('toggle-sidebar')">
-        <Icon icon="lucide:panel-left-close" />
-      </button>
-    </div>
-
     <nav class="sidebar-section">
       <button
         class="sidebar-item"
@@ -74,9 +67,8 @@
       </div>
     </nav>
 
-    <!-- In fondo, non in alto: allineati in cima si sovrapponevano ai tasti
-         del semaforo macOS (chiudi/minimizza/zoom, in alto a sinistra della
-         finestra) quando la sidebar è ridotta in larghezza. -->
+    <!-- In fondo, non in alto: sono azioni secondarie, e in cima ruberebbero
+         attenzione a cartelle e viste. -->
     <div class="sidebar-footer">
       <button
         v-if="updateCheck.available"
@@ -113,8 +105,6 @@ import { Icon } from '@iconify/vue'
 import { useNotesStore } from '../stores/notes'
 import { useUiStore } from '../stores/ui'
 import { useUpdateCheckStore } from '../stores/updateCheck'
-
-const emit = defineEmits(['toggle-sidebar'])
 
 const store = useNotesStore()
 const ui = useUiStore()
@@ -219,23 +209,8 @@ function removeFolder(folder) {
   display: flex;
   flex-direction: column;
   background: var(--sidebar-bg);
-  padding: 0 8px 12px;
+  padding: 10px 8px 12px;
   overflow-y: auto;
-}
-
-.sidebar-topbar {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  height: 40px;
-  flex-shrink: 0;
-  -webkit-app-region: drag;
-}
-.drag-spacer {
-  flex: 1;
-}
-.sidebar-topbar .icon-btn {
-  -webkit-app-region: no-drag;
 }
 
 .sidebar-footer {

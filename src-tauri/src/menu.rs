@@ -92,7 +92,20 @@ pub fn build_menu(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
         .item(&PredefinedMenuItem::paste(app, Some("Incolla"))?)
         .item(&PredefinedMenuItem::select_all(app, Some("Seleziona Tutto"))?)
         .separator()
-        .item(&MenuItem::with_id(app, "focus-search", "Cerca", true, Some("CmdOrCtrl+F"))?)
+        .item(&MenuItem::with_id(
+            app,
+            "find-in-note",
+            "Cerca nella nota",
+            true,
+            Some("CmdOrCtrl+F"),
+        )?)
+        .item(&MenuItem::with_id(
+            app,
+            "search-all",
+            "Cerca in tutte le note",
+            true,
+            Some("CmdOrCtrl+Shift+F"),
+        )?)
         .build()?;
 
     let toolbar_submenu = SubmenuBuilder::new(app, "Toolbar")
@@ -167,7 +180,8 @@ pub fn handle_menu_event(app: &AppHandle, event_id: &str) {
         "new-note" => send("menu:new-note", None),
         "new-folder" => send("menu:new-folder", None),
         "duplicate-note" => send("menu:duplicate-note", None),
-        "focus-search" => send("menu:focus-search", None),
+        "find-in-note" => send("menu:find-in-note", None),
+        "search-all" => send("menu:search-all", None),
         "toggle-sidebar" => send("menu:toggle-sidebar", None),
         "shortcuts" => send("menu:shortcuts", None),
         "toolbar-compact" => {

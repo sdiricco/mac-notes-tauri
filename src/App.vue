@@ -1,48 +1,56 @@
 <template>
-  <div v-if="!store.ready" class="loading">
+  <div v-if="!store.ready" class="loading" data-tauri-drag-region="deep">
     <Icon icon="lucide:loader-circle" class="spin" />
   </div>
   <template v-else>
-    <!-- Layout a larghezze fisse in pixel invece del Splitter di PrimeVue.
-         Motivo: PrimeVue ridimensiona sempre *la coppia* di pannelli adiacenti
-         conservandone la somma, quindi trascinando il divisorio di sinistra
-         cambiavano per forza sia sidebar sia lista. Qui ogni divisorio muove
-         solo il pannello che ha a sinistra e l'editor assorbe la differenza,
-         come in Mail/Note di macOS. In più i vincoli sono veri pixel: in
-         percentuale il minimo della sidebar valeva ~98px a finestra stretta
-         e ~260px a schermo intero, cioè non era un vincolo utile. -->
-    <div class="app-shell">
-      <div
-        v-show="ui.sidebarVisible"
-        class="pane sidebar-panel"
-        :style="{ width: sidebarWidth + 'px' }"
-      >
-        <Sidebar @toggle-sidebar="ui.toggleSidebar()" />
-      </div>
-      <div
-        v-show="ui.sidebarVisible"
-        class="divider"
-        role="separator"
-        aria-orientation="vertical"
-        aria-label="Ridimensiona la barra laterale"
-        @mousedown="startDrag('sidebar', $event)"
-        @dblclick="resetPane('sidebar')"
-      ></div>
+    <div class="app-root">
+      <AppHeader
+        ref="appHeaderRef"
+        :sidebar-visible="ui.sidebarVisible"
+        @toggle-sidebar="ui.toggleSidebar()"
+      />
 
-      <div class="pane" :style="{ width: listWidth + 'px' }">
-        <NoteList ref="noteListRef" :sidebar-visible="ui.sidebarVisible" @toggle-sidebar="ui.toggleSidebar()" />
-      </div>
-      <div
-        class="divider"
-        role="separator"
-        aria-orientation="vertical"
-        aria-label="Ridimensiona la lista delle note"
-        @mousedown="startDrag('list', $event)"
-        @dblclick="resetPane('list')"
-      ></div>
+      <!-- Layout a larghezze fisse in pixel invece del Splitter di PrimeVue.
+           Motivo: PrimeVue ridimensiona sempre *la coppia* di pannelli adiacenti
+           conservandone la somma, quindi trascinando il divisorio di sinistra
+           cambiavano per forza sia sidebar sia lista. Qui ogni divisorio muove
+           solo il pannello che ha a sinistra e l'editor assorbe la differenza,
+           come in Mail/Note di macOS. In più i vincoli sono veri pixel: in
+           percentuale il minimo della sidebar valeva ~98px a finestra stretta
+           e ~260px a schermo intero, cioè non era un vincolo utile. -->
+      <div class="app-shell">
+        <div
+          v-show="ui.sidebarVisible"
+          class="pane sidebar-panel"
+          :style="{ width: sidebarWidth + 'px' }"
+        >
+          <Sidebar />
+        </div>
+        <div
+          v-show="ui.sidebarVisible"
+          class="divider"
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="Ridimensiona la barra laterale"
+          @mousedown="startDrag('sidebar', $event)"
+          @dblclick="resetPane('sidebar')"
+        ></div>
 
-      <div class="pane editor-pane">
-        <NoteEditor />
+        <div class="pane" :style="{ width: listWidth + 'px' }">
+          <NoteList />
+        </div>
+        <div
+          class="divider"
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="Ridimensiona la lista delle note"
+          @mousedown="startDrag('list', $event)"
+          @dblclick="resetPane('list')"
+        ></div>
+
+        <div class="pane editor-pane">
+          <NoteEditor />
+        </div>
       </div>
     </div>
 
@@ -59,6 +67,7 @@ import { onBeforeUnmount, onMounted, ref } from 'vue'
 import ConfirmDialog from 'primevue/confirmdialog'
 import Toast from 'primevue/toast'
 import { Icon } from '@iconify/vue'
+import AppHeader from './components/AppHeader.vue'
 import Sidebar from './components/Sidebar.vue'
 import NoteList from './components/NoteList.vue'
 import NoteEditor from './components/NoteEditor.vue'
@@ -74,7 +83,7 @@ const store = useNotesStore()
 const settings = useSettingsStore()
 const ui = useUiStore()
 const updateCheck = useUpdateCheckStore()
-const noteListRef = ref(null)
+const appHeaderRef = ref(null)
 const unsubscribers = []
 
 // Vincoli in pixel dei due pannelli a larghezza fissa. L'editor non ha una
@@ -172,7 +181,7 @@ onMounted(async () => {
     api.onMenu('menu:duplicate-note', () => {
       if (store.selectedNoteId) store.duplicateNote(store.selectedNoteId)
     }),
-    api.onMenu('menu:focus-search', () => noteListRef.value?.focusSearch()),
+    api.onMenu('menu:search-all', () => appHeaderRef.value?.openSearch()),
     api.onMenu('menu:toggle-sidebar', () => ui.toggleSidebar()),
     api.onMenu('menu:settings', () => ui.openSettings()),
     api.onMenu('menu:shortcuts', () => ui.openShortcuts()),
@@ -195,7 +204,6 @@ onBeforeUnmount(() => {
   justify-content: center;
   font-size: 26px;
   color: var(--icon-color);
-  -webkit-app-region: drag;
 }
 .spin {
   animation: spin 0.8s linear infinite;
@@ -206,8 +214,18 @@ onBeforeUnmount(() => {
   }
 }
 
-.app-shell {
+/* L'header occupa la sua altezza, i pannelli il resto: la shell non e' piu
+   alta 100vh ma quello che rimane sotto la barra. */
+.app-root {
   height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.app-shell {
+  flex: 1;
+  min-height: 0;
   display: flex;
   overflow: hidden;
 }
@@ -239,16 +257,15 @@ onBeforeUnmount(() => {
    sborda sui pannelli adiacenti senza occupare spazio nel layout: così non
    si creano né spazi vuoti né doppie linee, ma il bersaglio resta comodo (a
    1px era quasi impossibile da centrare col mouse).
-   no-drag è necessario perché in alto il divisorio confina con gli header di
-   Sidebar/NoteList/NoteEditor, che hanno -webkit-app-region: drag: senza,
-   un click lì sposterebbe la finestra invece di ridimensionare. */
+   Non serve escluderlo dalle aree di trascinamento della finestra: quelle
+   sono dichiarate con data-tauri-drag-region sui singoli header, e il
+   divisorio non ne fa parte. */
 .divider {
   flex: 0 0 1px;
   position: relative;
   z-index: 5; /* l'overlay deve stare sopra i pannelli per ricevere il mouse */
   background: var(--p-content-border-color);
   cursor: col-resize;
-  -webkit-app-region: no-drag;
 }
 .divider::after {
   content: '';

@@ -1,12 +1,10 @@
 <template>
   <section class="note-list">
-    <div class="note-list-drag"></div>
-
     <!-- L'header resta sempre quello normale: la selezione multipla non lo
          sostituisce più, vive allo stesso livello della barra di
          ordinamento (vedi sort-row), così la vista non "salta" cambiando
          del tutto struttura quando si entra/esce dalla modalità. -->
-    <div class="note-list-header" :class="{ inset: !sidebarVisible }">
+    <div class="note-list-header">
       <h2>{{ folderTitle }}</h2>
       <div class="header-actions">
         <button
@@ -26,20 +24,7 @@
         >
           <Icon icon="lucide:trash-2" />
         </button>
-        <button
-          v-if="!sidebarVisible"
-          class="icon-btn"
-          title="Mostra sidebar"
-          @click="emit('toggle-sidebar')"
-        >
-          <Icon icon="lucide:panel-left-open" />
-        </button>
       </div>
-    </div>
-
-    <div class="search-box">
-      <Icon icon="lucide:search" />
-      <input ref="searchInput" v-model="store.searchQuery" type="text" placeholder="Cerca" />
     </div>
 
     <!-- Due punti d'ingresso per la selezione multipla: questo bottone
@@ -179,17 +164,11 @@ import { useNotesStore } from '../stores/notes'
 import { useSettingsStore } from '../stores/settings'
 import { stripHtml, htmlToMarkdown } from '../utils/markdown'
 
-defineProps({
-  sidebarVisible: { type: Boolean, default: true }
-})
-const emit = defineEmits(['toggle-sidebar'])
-
 const store = useNotesStore()
 const settings = useSettingsStore()
 const confirm = useConfirm()
 const toast = useToast()
 
-const searchInput = ref(null)
 const noteMenu = ref(null)
 const sortMenu = ref(null)
 const menuTargetNote = ref(null)
@@ -402,7 +381,6 @@ function formatDate(timestamp) {
   return date.toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
-defineExpose({ focusSearch: () => searchInput.value?.focus() })
 </script>
 
 <style scoped>
@@ -415,24 +393,11 @@ defineExpose({ focusSearch: () => searchInput.value?.focus() })
   background: var(--list-bg);
 }
 
-/* Nessuna altezza fissa: era una striscia draggabile duplicata, la stessa
-   funzione la assolve già note-list-header (anch'esso -webkit-app-region:drag).
-   Lo spazio che dava è confluito nel padding-top dell'header, vedi sotto. */
-.note-list-drag {
-  -webkit-app-region: drag;
-  flex-shrink: 0;
-}
-
 .note-list-header {
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 10px 12px 8px;
-  -webkit-app-region: drag;
-}
-/* quando la sidebar è chiusa i semafori della finestra coprono l'angolo: rientro */
-.note-list-header.inset {
-  padding-left: 74px;
 }
 .note-list-header h2 {
   flex: 1;
@@ -441,10 +406,11 @@ defineExpose({ focusSearch: () => searchInput.value?.focus() })
   margin: 0;
 }
 
+/* Nessun no-drag: sono bottoni, e Tauri li esclude da sé dalle aree di
+   trascinamento (vedi data-tauri-drag-region sull'header). */
 .header-actions {
   display: flex;
   gap: 2px;
-  -webkit-app-region: no-drag;
 }
 
 .selection-count {
@@ -475,29 +441,6 @@ defineExpose({ focusSearch: () => searchInput.value?.focus() })
 }
 .icon-btn.danger:hover {
   color: #e5484d;
-}
-
-.search-box {
-  margin: 0 10px 8px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  background: var(--search-bg);
-  border-radius: 8px;
-  padding: 6px 9px;
-}
-.search-box :deep(svg) {
-  color: var(--p-text-muted-color);
-  font-size: 14px;
-  flex-shrink: 0;
-}
-.search-box input {
-  border: none;
-  background: transparent;
-  outline: none;
-  font-size: 13px;
-  width: 100%;
-  color: var(--p-text-color);
 }
 
 .sort-row {

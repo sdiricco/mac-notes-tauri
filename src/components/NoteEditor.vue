@@ -1,7 +1,5 @@
 <template>
   <section class="note-editor">
-    <div class="editor-drag"></div>
-
     <div v-if="!store.selectedNote" class="empty-state">
       <Icon icon="lucide:notebook-pen" />
       <p>Seleziona una nota o creane una nuova</p>
@@ -140,8 +138,18 @@ function onGlobalMousedown(event) {
   }
 }
 
-onMounted(() => window.addEventListener('mousedown', onGlobalMousedown))
-onBeforeUnmount(() => window.removeEventListener('mousedown', onGlobalMousedown))
+// Il trascinamento della finestra ora e' tutto nell'header globale
+// (AppHeader): qui restano solo i listener locali.
+let offFindInNote = null
+
+onMounted(() => {
+  window.addEventListener('mousedown', onGlobalMousedown)
+  offFindInNote = api.onMenu('menu:find-in-note', () => quillEditorRef.value?.toggleFindBar())
+})
+onBeforeUnmount(() => {
+  window.removeEventListener('mousedown', onGlobalMousedown)
+  offFindInNote?.()
+})
 
 function openMarkdownPreview() {
   markdownPreviewText.value = htmlToMarkdown(store.selectedNote.content)
@@ -199,14 +207,6 @@ async function copyNote() {
   background: var(--editor-bg);
 }
 
-/* Nessuna altezza fissa: era una striscia draggabile duplicata, la stessa
-   funzione la assolve già editor-header (anch'esso -webkit-app-region:drag).
-   Lo spazio che dava è confluito nel padding-top dell'header, vedi sotto. */
-.editor-drag {
-  -webkit-app-region: drag;
-  flex-shrink: 0;
-}
-
 .empty-state {
   flex: 1;
   display: flex;
@@ -236,7 +236,6 @@ async function copyNote() {
   align-items: center;
   gap: 6px;
   padding: 12px 16px;
-  -webkit-app-region: drag;
   background: transparent;
   border-bottom: 1px solid var(--p-content-border-color);
 }
@@ -246,7 +245,6 @@ async function copyNote() {
   align-items: center;
   gap: 2px;
   flex-shrink: 0;
-  -webkit-app-region: no-drag;
 }
 
 .action-overflow {
@@ -304,7 +302,6 @@ async function copyNote() {
   display: flex;
   align-items: center;
   outline: none;
-  -webkit-app-region: no-drag;
 }
 .icon-btn:hover {
   background: var(--sidebar-hover-bg);
@@ -387,7 +384,6 @@ async function copyNote() {
   display: flex;
   align-items: center;
   flex-wrap: nowrap;
-  -webkit-app-region: no-drag;
 }
 
 /* Quill aggiunge le classi ql-toolbar/ql-snow al contenitore esterno passato

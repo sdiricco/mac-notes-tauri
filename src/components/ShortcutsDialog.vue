@@ -39,7 +39,8 @@ const groups = [
       { label: 'Nuova nota', keys: [mod, 'N'] },
       { label: 'Nuova cartella', keys: [mod, shift, 'N'] },
       { label: 'Duplica nota', keys: [mod, 'D'] },
-      { label: 'Cerca nelle note', keys: [mod, 'F'] },
+      { label: 'Cerca nella nota', keys: [mod, 'F'] },
+      { label: 'Cerca in tutte le note', keys: [mod, shift, 'F'] },
       { label: 'Mostra/Nascondi sidebar', keys: [mod, '/'] },
       { label: 'Impostazioni', keys: [mod, ','] }
     ]

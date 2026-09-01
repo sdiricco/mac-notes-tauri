@@ -254,7 +254,20 @@ export function htmlToMarkdown(html) {
 }
 
 export function stripHtml(html) {
-  return (html || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
+  if (!html) return ''
+  // Due passaggi distinti, e l'ordine conta:
+  // 1) i tag diventano uno *spazio* (non stringa vuota), altrimenti il testo
+  //    di due blocchi adiacenti si incollerebbe: "primo</p><p>secondo".
+  // 2) le entità vanno decodificate, perché una regex sui tag le lascia come
+  //    testo letterale — è il motivo per cui nell'anteprima delle note si
+  //    leggevano "&nbsp;", "&#39;" e "&quot;". Si delega al parser HTML
+  //    invece di una tabella di sostituzioni, così valgono anche le entità
+  //    numeriche. textContent, non innerHTML: il risultato è testo inerte.
+  const withoutTags = String(html).replace(/<[^>]+>/g, ' ')
+  const decoded = new DOMParser().parseFromString(withoutTags, 'text/html').body.textContent || ''
+  // \s comprende anche lo spazio non separabile (U+00A0) in cui si decodifica
+  // &nbsp;, quindi qui viene normalizzato a spazio semplice insieme al resto.
+  return decoded.replace(/\s+/g, ' ').trim()
 }
 
 // Il titolo non si digita più a mano: si deduce dal primo h1/h2/h3 presente

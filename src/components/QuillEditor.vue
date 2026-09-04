@@ -65,25 +65,30 @@
     <!-- Electron non implementa window.prompt() (ritorna sempre null senza
          mostrare nulla): questo dialogo sostituisce il prompt nativo per
          link e immagini (vedi openValuePrompt/confirmValuePrompt). Per i
-         link ha due campi (indirizzo + testo) e si riapre in modifica
-         cliccando su un link già inserito (vedi onEditorClick). -->
+         link ha due campi (indirizzo + testo) e si riapre in modifica col
+         tasto destro su un link già inserito (vedi onEditorContextMenu);
+         il click, invece, apre il link. -->
     <div v-if="valuePrompt.visible" class="value-prompt-backdrop" @mousedown.self="cancelValuePrompt">
       <div class="value-prompt" :class="{ 'value-prompt-wide': valuePrompt.kind === 'image' }">
         <template v-if="valuePrompt.kind === 'link'">
-          <div class="value-prompt-label">Indirizzo del link</div>
+          <div class="value-prompt-label">Testo da visualizzare</div>
+          <!-- Invio qui passa al campo successivo invece di confermare: con
+               la conferma immediata dal primo campo il dialogo si chiudeva
+               prima che si potesse compilare l'altro. -->
+          <input
+            ref="valuePromptTextEl"
+            v-model="valuePrompt.text"
+            type="text"
+            placeholder="(vuoto = usa l'indirizzo)"
+            @keydown.enter.prevent="valuePromptUrlEl?.focus()"
+            @keydown.esc="cancelValuePrompt"
+          />
+          <div class="value-prompt-label value-prompt-label-spaced">Indirizzo del link</div>
           <input
             ref="valuePromptUrlEl"
             v-model="valuePrompt.url"
             type="text"
             placeholder="https://..."
-            @keydown.enter="confirmValuePrompt"
-            @keydown.esc="cancelValuePrompt"
-          />
-          <div class="value-prompt-label value-prompt-label-spaced">Testo da visualizzare</div>
-          <input
-            v-model="valuePrompt.text"
-            type="text"
-            placeholder="(vuoto = usa l'indirizzo)"
             @keydown.enter="confirmValuePrompt"
             @keydown.esc="cancelValuePrompt"
           />
@@ -222,6 +227,7 @@ import hljs from 'highlight.js/lib/common'
 import 'quill/dist/quill.snow.css'
 import { Icon } from '@iconify/vue'
 import { useToast } from 'primevue/usetoast'
+import { openUrl } from '@tauri-apps/plugin-opener'
 import { useSettingsStore } from '../stores/settings'
 import { api } from '../utils/api'
 import { shortcut } from '../utils/shortcuts'
@@ -591,6 +597,7 @@ const toggle = (quill, range, name, value, current) =>
 // su un link già esistente (editing=true), cliccandoci sopra (onEditorClick)
 // o riaprendo il bottone/scorciatoia col cursore già dentro un link.
 const valuePromptUrlEl = ref(null)
+const valuePromptTextEl = ref(null)
 const valuePrompt = reactive({ visible: false, kind: null, index: 0, length: 0, url: '', text: '', editing: false })
 const imagePreviewFailed = ref(false)
 const imagePreviewSrc = ref('')
@@ -812,7 +819,16 @@ function openValuePrompt(kind, range, prefill = {}) {
   editing.cropping = false
   editing.cropRect = null
   valuePrompt.visible = true
-  nextTick(() => valuePromptUrlEl.value?.focus())
+  // Primo campo utile, non sempre il primo in ordine: selezionando del testo
+  // e premendo Cmd+K l'etichetta e' gia' compilata e serve l'indirizzo,
+  // mentre partendo dal nulla si scrive prima l'etichetta. Per le immagini
+  // c'e' un solo campo, l'indirizzo.
+  nextTick(() => {
+    const el =
+      kind === 'link' && !valuePrompt.text ? valuePromptTextEl.value : valuePromptUrlEl.value
+    el?.focus()
+    el?.select()
+  })
 }
 
 function cancelValuePrompt() {
@@ -843,7 +859,7 @@ async function confirmValuePrompt() {
     quill.focus()
     return
   }
-  const url = valuePrompt.url.trim()
+  const url = normalizeUrl(valuePrompt.url)
   valuePrompt.visible = false
   if (!url) return quill?.focus()
   const text = valuePrompt.text.trim() || url
@@ -853,6 +869,21 @@ async function confirmValuePrompt() {
   quill.insertText(index, text, 'link', url, 'user')
   quill.setSelection(index + text.length, 0, 'user')
   quill.focus()
+}
+
+// Quill non aggiunge lo schema all'indirizzo: scrivendo "google.com" l'href
+// resta un URL *relativo*, che nella webview (origine tauri://localhost) si
+// risolve in uno schema non apribile — il link nasceva già rotto. Qui si
+// normalizza una volta, al salvataggio, così l'href memorizzato è assoluto.
+function normalizeUrl(raw) {
+  const v = (raw || '').trim()
+  if (!v) return ''
+  if (/^[a-z][a-z0-9+.-]*:/i.test(v)) return v // ha già uno schema (https:, mailto:, ...)
+  if (v.startsWith('//')) return `https:${v}`
+  // Un indirizzo email scritto senza schema: https:// lo renderebbe
+  // inservibile, mailto: è quasi certamente l'intenzione.
+  if (/^[^\s/@]+@[^\s/@]+\.[^\s/@]+$/.test(v)) return `mailto:${v}`
+  return `https://${v}`
 }
 
 function removeValueLink() {
@@ -871,15 +902,47 @@ function findLinkAt(index) {
   return { index: index - offset, length: link.length(), url: link.domNode.getAttribute('href'), text: link.domNode.textContent }
 }
 
-// Un click su un link esistente nel contenuto riapre il dialogo invece di
-// seguirlo: è il modo più diretto per modificarlo o rimuoverlo.
+// Solo questi schemi vengono passati al sistema operativo. Il contenuto
+// delle note e' dato dell'utente e openUrl lo consegna all'OS: senza un
+// elenco chiuso, un href con uno schema arbitrario (file:, o peggio) verrebbe
+// aperto cosi' com'e'. Quill converte gli schemi che rifiuta in
+// "about:blank", che non e' in elenco e ricade quindi sulla modifica.
+const OPENABLE_PROTOCOLS = new Set(['http:', 'https:', 'mailto:'])
+
+function openableUrl(href) {
+  if (!href) return null
+  try {
+    return OPENABLE_PROTOCOLS.has(new URL(href, window.location.href).protocol) ? href : null
+  } catch {
+    return null
+  }
+}
+
+// Un click su un link lo apre nel browser di sistema. Non si puo' lasciare
+// navigare l'ancora: la webview seguirebbe l'URL sostituendo l'app stessa.
+// Per modificare o rimuovere un link restano il tasto destro (vedi
+// onEditorContextMenu) e Cmd+K con il cursore dentro al link.
 function onEditorClick(event) {
   const anchor = event.target.closest('a')
   if (!anchor || !quill.root.contains(anchor)) return
   event.preventDefault()
+  const url = openableUrl(anchor.getAttribute('href'))
+  if (url) {
+    openUrl(url).catch(() => {
+      toast.add({
+        severity: 'warn',
+        summary: 'Impossibile aprire il link',
+        detail: url,
+        life: 2600
+      })
+    })
+    return
+  }
+  // Schema non apribile (spesso un indirizzo scritto male, che Quill ha
+  // trasformato in about:blank): aprire la modifica e' piu' utile che non
+  // fare nulla.
   const range = quill.getSelection(true)
-  if (!range) return
-  openLinkPromptForRange(range)
+  if (range) openLinkPromptForRange(range)
 }
 
 // Condivisa da bottone toolbar e scorciatoia da tastiera: se il cursore è già
@@ -1229,6 +1292,13 @@ function onGlobalMousedown(event) {
 // qui sopra. Un solo listener 'contextmenu' instrada tra i due invece di
 // registrarne due che si contenderebbero preventDefault().
 function onEditorContextMenu(event) {
+  const anchor = event.target.closest('a')
+  if (anchor && quill.root.contains(anchor)) {
+    // Il click ora apre il link, quindi la modifica passa da qui.
+    event.preventDefault()
+    const range = quill.getSelection(true)
+    if (range) return openLinkPromptForRange(range)
+  }
   if (event.target.closest('td') && quill.getModule('table')) openTableMenu(event)
   else openContextMenu(event)
 }
@@ -1755,6 +1825,27 @@ onBeforeUnmount(() => {
   color: var(--p-text-muted-color);
   font-style: normal;
   left: 24px;
+}
+
+/* Tooltip nativo del tema "snow" (quello con "Visit URL: / Edit / Remove"):
+   sfondo bianco fisso, etichette in inglese, nessun legame col tema. Quill lo
+   mostra da se' quando il cursore entra in un link. Qui e' pura
+   duplicazione: gli handler `link` e `image` sono sovrascritti dai dialoghi
+   dell'app (vedi modules.toolbar.handlers), e per modificare o rimuovere un
+   link ci sono tasto destro e Cmd+K. Nascosto invece di ristilizzato: non
+   avrebbe comunque nulla da fare. */
+.quill-editor :deep(.ql-tooltip) {
+  display: none;
+}
+
+/* Quill fissa `.ql-snow a { color: #06c }`: un blu che sul fondo scuro
+   dell'editor in dark mode e' quasi illeggibile, ed era il motivo per cui il
+   testo del link sembrava non comparire affatto. Qui segue il tema, con lo
+   stesso colore usato dall'evidenziazione markdown. Il cursore diventa a
+   mano perche' un click apre il link (vedi onEditorClick). */
+.quill-editor :deep(.ql-editor a) {
+  color: var(--link-color);
+  cursor: pointer;
 }
 
 .quill-editor :deep(.ql-editor code) {

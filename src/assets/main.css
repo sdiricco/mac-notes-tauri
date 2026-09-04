@@ -16,7 +16,8 @@
   /* syntax highlighting markdown (CodeMirror) */
   --cm-heading: #1a1a1a;
   --cm-strong: #1a1a1a;
-  --cm-link: #2563a8;
+  --link-color: #2563a8;
+  --cm-link: var(--link-color);
   --cm-code: #b3266b;
   --cm-quote: #6e6e6e;
   --cm-meta: #9a9a9a;
@@ -48,7 +49,8 @@
 
   --cm-heading: #f2f2f2;
   --cm-strong: #f2f2f2;
-  --cm-link: #7ab0e6;
+  --link-color: #7ab0e6;
+  --cm-link: var(--link-color);
   --cm-code: #f08bc0;
   --cm-quote: #9a9a9a;
   --cm-meta: #7d7d7d;

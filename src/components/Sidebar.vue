@@ -12,6 +12,15 @@
       </button>
       <button
         class="sidebar-item"
+        :class="{ active: store.isPinnedView }"
+        @click="store.selectFolder('pinned')"
+      >
+        <Icon icon="lucide:star" />
+        <span>Preferiti</span>
+        <span class="count">{{ store.pinnedCount }}</span>
+      </button>
+      <button
+        class="sidebar-item"
         :class="{ active: store.isTrashView }"
         @click="store.selectFolder('trash')"
       >
@@ -28,15 +37,26 @@
       </button>
     </div>
 
-    <nav class="sidebar-section folders">
+    <!-- Riordino con eventi puntatore e non con il drag & drop HTML5: su
+         Windows quest'ultimo richiede di disattivare dragDropEnabled (che
+         intercetta il drop dei file a livello nativo), e il comportamento
+         nelle tre webview non e' uniforme. Qui e' identico su ogni
+         piattaforma. -->
+    <nav ref="folderListEl" class="sidebar-section folders">
       <div
-        v-for="folder in store.folders"
+        v-for="(folder, index) in store.folders"
         :key="folder.id"
         class="sidebar-item folder-item"
-        :class="{ active: store.selectedFolderId === folder.id }"
-        @click="store.selectFolder(folder.id)"
+        :class="{
+          active: store.selectedFolderId === folder.id,
+          dragging: dragIndex === index,
+          'drop-before': dropIndex === index && dragIndex !== index,
+          'drop-after': dropIndex === store.folders.length && index === store.folders.length - 1
+        }"
+        @click="onFolderClick(folder)"
         @contextmenu.prevent="onContextMenu($event, folder)"
         @dblclick="startRename(folder)"
+        @mousedown="onFolderMousedown($event, index, folder)"
       >
         <Icon icon="lucide:folder" />
         <input
@@ -97,7 +117,7 @@
 </template>
 
 <script setup>
-import { nextTick, ref } from 'vue'
+import { nextTick, onBeforeUnmount, ref } from 'vue'
 import ContextMenu from 'primevue/contextmenu'
 import { useConfirm } from 'primevue/useconfirm'
 import { useToast } from 'primevue/usetoast'
@@ -132,6 +152,86 @@ async function onUpdateClick() {
     })
   }
 }
+
+// --- Riordino delle cartelle -------------------------------------------
+// Il trascinamento parte solo dopo DRAG_THRESHOLD px: sotto quella soglia
+// l'interazione resta un click (seleziona la cartella) o un doppio click
+// (rinomina), che altrimenti verrebbero mangiati dal drag.
+const DRAG_THRESHOLD = 4
+
+const folderListEl = ref(null)
+const dragIndex = ref(-1)
+const dropIndex = ref(-1)
+let pending = null // { index, startY, folder } prima del superamento soglia
+let suppressClick = false
+
+function onFolderMousedown(event, index, folder) {
+  // Durante la rinomina c'e' un <input>: trascinare impedirebbe di
+  // selezionare il testo con il mouse.
+  if (renamingId.value === folder.id) return
+  if (event.button !== 0) return
+  pending = { index, startY: event.clientY }
+  window.addEventListener('mousemove', onFolderMousemove)
+  window.addEventListener('mouseup', onFolderMouseup)
+}
+
+function onFolderMousemove(event) {
+  if (!pending) return
+  if (dragIndex.value === -1) {
+    if (Math.abs(event.clientY - pending.startY) < DRAG_THRESHOLD) return
+    dragIndex.value = pending.index
+    document.body.classList.add('is-reordering')
+  }
+  dropIndex.value = dropIndexFor(event.clientY)
+}
+
+// Indice di *inserimento*: 0..length. Si guarda il punto medio di ogni riga,
+// così passando la metà superiore si inserisce prima e oltre la metà
+// inferiore dopo — il comportamento atteso di un riordino per trascinamento.
+function dropIndexFor(clientY) {
+  // Solo le righe delle cartelle esistenti: mentre si crea una cartella nuova
+  // il <nav> contiene una riga in piu' (l'input), che falserebbe gli indici.
+  // E' resa dopo il v-for, quindi basta troncare.
+  const rows = [...(folderListEl.value?.children || [])].slice(0, store.folders.length)
+  for (let i = 0; i < rows.length; i++) {
+    const rect = rows[i].getBoundingClientRect()
+    if (clientY < rect.top + rect.height / 2) return i
+  }
+  return rows.length
+}
+
+function onFolderMouseup() {
+  if (dragIndex.value !== -1 && dropIndex.value !== -1) {
+    // dropIndex e' un indice di inserimento nella lista *con* l'elemento
+    // ancora al suo posto: rimuovendolo, ogni posizione successiva scala di
+    // uno. Senza questa correzione trascinare verso il basso finisce sempre
+    // una posizione troppo in alto.
+    const target = dropIndex.value > dragIndex.value ? dropIndex.value - 1 : dropIndex.value
+    store.reorderFolders(dragIndex.value, target)
+    // Il mouseup genera anche un click sulla riga: qui non deve selezionare.
+    suppressClick = true
+  }
+  endFolderDrag()
+}
+
+function endFolderDrag() {
+  pending = null
+  dragIndex.value = -1
+  dropIndex.value = -1
+  document.body.classList.remove('is-reordering')
+  window.removeEventListener('mousemove', onFolderMousemove)
+  window.removeEventListener('mouseup', onFolderMouseup)
+}
+
+function onFolderClick(folder) {
+  if (suppressClick) {
+    suppressClick = false
+    return
+  }
+  store.selectFolder(folder.id)
+}
+
+onBeforeUnmount(endFolderDrag)
 
 const renamingId = ref(null)
 const renameValue = ref('')
@@ -245,6 +345,39 @@ function removeFolder(folder) {
   font-size: 15px;
   flex-shrink: 0;
   color: var(--icon-color);
+}
+
+/* Riordino: la riga trascinata sbiadisce, e una linea segna il punto di
+   inserimento. La linea e' un ::before/::after in position:absolute così non
+   sposta nulla nel layout mentre la si muove. */
+.folder-item {
+  position: relative;
+}
+.folder-item.dragging {
+  opacity: 0.4;
+}
+.folder-item.drop-before::before,
+.folder-item.drop-after::after {
+  content: '';
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--icon-color);
+}
+.folder-item.drop-before::before {
+  top: -1px;
+}
+.folder-item.drop-after::after {
+  bottom: -1px;
+}
+
+/* Durante il riordino il cursore resta coerente su tutta la finestra e nulla
+   seleziona testo, anche se il puntatore esce dalla lista. */
+body.is-reordering {
+  cursor: grabbing;
+  user-select: none;
 }
 
 .sidebar-section {

@@ -57,6 +57,17 @@
           @update:model-value="toggleSelectAll"
         />
         <span class="selection-count">{{ selectedIds.size }}/{{ store.visibleNotes.length }}</span>
+        <!-- Non nel cestino: lì una nota va prima ripristinata, spostarla in
+             una cartella restando cestinata sarebbe solo confusionario. -->
+        <button
+          v-if="!store.isTrashView"
+          class="icon-btn"
+          title="Sposta in una cartella"
+          :disabled="selectedIds.size === 0"
+          @click="moveMenu.toggle($event)"
+        >
+          <Icon icon="lucide:folder-input" />
+        </button>
         <button
           class="icon-btn danger"
           :title="store.isTrashView ? 'Elimina definitivamente' : 'Sposta nel cestino'"
@@ -129,6 +140,22 @@
       </template>
     </Menu>
 
+    <!-- Destinazioni per la selezione multipla. Stesso modello di voci del
+         gruppo "Sposta in" nel menu contestuale (folderTargetItems). -->
+    <Menu ref="moveMenu" :model="moveMenuItems" :popup="true">
+      <template #start>
+        <div class="menu-title">
+          Sposta {{ selectedIds.size === 1 ? 'la nota' : `${selectedIds.size} note` }} in
+        </div>
+      </template>
+      <template #item="{ item, props }">
+        <a class="menu-row" v-bind="props.action">
+          <Icon :icon="item.icon" />
+          <span>{{ item.label }}</span>
+        </a>
+      </template>
+    </Menu>
+
     <!-- Menu ordinamento / filtri -->
     <Menu ref="sortMenu" :model="sortMenuItems" :popup="true">
       <template #start>
@@ -171,6 +198,7 @@ const toast = useToast()
 
 const noteMenu = ref(null)
 const sortMenu = ref(null)
+const moveMenu = ref(null)
 const menuTargetNote = ref(null)
 
 const renamingId = ref(null)
@@ -179,6 +207,7 @@ const renameInput = ref(null)
 
 const folderTitle = computed(() => {
   if (store.isAllView) return 'Tutte le Note'
+  if (store.isPinnedView) return 'Preferiti'
   if (store.isTrashView) return 'Cestino'
   return store.currentFolder?.name || 'Note'
 })
@@ -189,6 +218,34 @@ const SORT_LABELS = {
   title: 'Titolo'
 }
 const sortLabel = computed(() => SORT_LABELS[settings.sortKey] || 'Data modifica')
+
+// Voci di destinazione condivise fra il menu contestuale di una nota e il
+// menu della selezione multipla: cambia solo su quali id agiscono.
+// "Senza cartella" (folderId null) e' una destinazione valida come le altre,
+// coerente con createNote che lascia null fuori dalle cartelle.
+function folderTargetItems(ids, currentFolderId) {
+  const targets = [...store.folders, { id: null, name: 'Senza cartella' }]
+  return targets.map((folder) => ({
+    label: folder.name,
+    icon: folder.id === null ? 'lucide:folder-minus' : 'lucide:folder',
+    // La cartella in cui la nota si trova gia' resta visibile ma inerte:
+    // nasconderla farebbe "ballare" l'elenco fra note diverse.
+    disabled: ids.length === 1 && folder.id === currentFolderId,
+    command: () => moveTo(ids, folder.id, folder.name)
+  }))
+}
+
+function moveTo(ids, folderId, folderName) {
+  if (!ids.length) return
+  store.moveNotesToFolder(ids, folderId)
+  toast.add({
+    severity: 'success',
+    summary: ids.length === 1 ? 'Nota spostata' : `${ids.length} note spostate`,
+    detail: `Destinazione: ${folderName}`,
+    life: 1800
+  })
+  if (selectionMode.value) exitSelectionMode()
+}
 
 const noteMenuItems = computed(() => {
   const note = menuTargetNote.value
@@ -222,16 +279,28 @@ const noteMenuItems = computed(() => {
       icon: 'lucide:trash-2',
       danger: true,
       command: () => store.trashNote(note.id)
-    }
+    },
+    // Gruppo, non sottomenu a comparsa: il Menu di PrimeVue rende `items`
+    // come elenco piatto con intestazione (vedi Menu.vue, submenuLabel),
+    // e in cambio si evita di dover aprire un popup da dentro un altro.
+    { label: 'Sposta in', items: folderTargetItems([note.id], note.folderId) }
   ]
 })
+
+// Destinazioni per le note selezionate. currentFolderId non serve: con piu'
+// note le cartelle di partenza possono essere diverse.
+const moveMenuItems = computed(() => folderTargetItems([...selectedIds]))
 
 const sortMenuItems = computed(() => [
   { label: 'Data modifica', icon: 'lucide:clock', sortKey: 'updated', command: () => settings.setSort('updated') },
   { label: 'Data creazione', icon: 'lucide:calendar', sortKey: 'created', command: () => settings.setSort('created') },
   { label: 'Titolo', icon: 'lucide:case-sensitive', sortKey: 'title', command: () => settings.setSort('title') },
-  { separator: true },
-  { label: 'Solo preferiti', icon: 'lucide:star', filter: true, command: () => settings.togglePinnedOnly() }
+  ...(store.isPinnedView
+    ? []
+    : [
+        { separator: true },
+        { label: 'Solo preferiti', icon: 'lucide:star', filter: true, command: () => settings.togglePinnedOnly() }
+      ])
 ])
 
 function openMenu(event, note) {
@@ -662,6 +731,19 @@ function formatDate(timestamp) {
 .menu-row.danger svg {
   color: #e5484d;
 }
+/* Intestazione dei gruppi (il "Sposta in" del menu contestuale): PrimeVue la
+   rende come .p-menu-submenu-label, fuori dal template #item. Le si da' lo
+   stesso aspetto di .menu-title per non avere due stili di intestazione. */
+:deep(.p-menu-submenu-label) {
+  padding: 8px 12px 2px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--p-text-muted-color);
+  background: transparent;
+}
+
 .menu-title {
   padding: 6px 12px 2px;
   font-size: 11px;

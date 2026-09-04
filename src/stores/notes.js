@@ -6,6 +6,13 @@ import { useSettingsStore } from './settings'
 
 const ALL = 'all'
 const TRASH = 'trash'
+const PINNED = 'pinned'
+
+// Viste che non corrispondono a una cartella reale. Raccolte in un insieme
+// perche' vanno escluse in piu' punti (createNote sopra tutto): con i
+// confronti sparsi, aggiungere una vista significa ricordarsi di aggiornarli
+// tutti, e dimenticarne uno assegna alle note un folderId inesistente.
+const VIRTUAL_VIEWS = new Set([ALL, TRASH, PINNED])
 
 // I Proxy reattivi di Pinia non sono serializzabili via IPC: servono oggetti puri.
 const cloneNote = (note) => JSON.parse(JSON.stringify(note))
@@ -62,6 +69,7 @@ export const useNotesStore = defineStore('notes', {
   getters: {
     isTrashView: (state) => state.selectedFolderId === TRASH,
     isAllView: (state) => state.selectedFolderId === ALL,
+    isPinnedView: (state) => state.selectedFolderId === PINNED,
 
     currentFolder: (state) => state.folders.find((f) => f.id === state.selectedFolderId) || null,
 
@@ -70,6 +78,7 @@ export const useNotesStore = defineStore('notes', {
 
     trashCount: (state) => state.notes.filter((n) => n.trashed).length,
     allCount: (state) => state.notes.filter((n) => !n.trashed).length,
+    pinnedCount: (state) => state.notes.filter((n) => n.pinned && !n.trashed).length,
 
     visibleNotes: (state) => {
       const settings = useSettingsStore()
@@ -77,9 +86,17 @@ export const useNotesStore = defineStore('notes', {
         if (state.selectedFolderId === TRASH) return n.trashed
         if (n.trashed) return false
         if (state.selectedFolderId === ALL) return true
+        if (state.selectedFolderId === PINNED) return n.pinned
         return n.folderId === state.selectedFolderId
       })
-      if (settings.pinnedOnly && state.selectedFolderId !== TRASH) {
+      // Nella vista Preferiti il filtro "solo preferiti" e' implicito:
+      // applicarlo di nuovo non cambia nulla ma lascerebbe una spunta attiva
+      // apparentemente senza effetto.
+      if (
+        settings.pinnedOnly &&
+        state.selectedFolderId !== TRASH &&
+        state.selectedFolderId !== PINNED
+      ) {
         list = list.filter((n) => n.pinned)
       }
       const dir = settings.sortDir === 'asc' ? 1 : -1
@@ -139,7 +156,7 @@ export const useNotesStore = defineStore('notes', {
       // lista: altrimenti sembra "sparire" dentro una cartella scelta a caso
       // e ricompare come duplicato quando poi la apri.
       const targetFolder =
-        folderId || (this.selectedFolderId !== ALL && this.selectedFolderId !== TRASH ? this.selectedFolderId : null)
+        folderId || (VIRTUAL_VIEWS.has(this.selectedFolderId) ? null : this.selectedFolderId)
       const now = Date.now()
       const note = {
         id: uuid(),
@@ -234,6 +251,34 @@ export const useNotesStore = defineStore('notes', {
       }
     },
 
+    moveNoteToFolder(id, folderId) {
+      this.moveNotesToFolder([id], folderId)
+    },
+
+    // Come per trashNote/trashNotes, la variante plurale esiste per la
+    // selezione multipla di NoteList.vue: un solo ricalcolo di
+    // selectedNoteId al termine invece di uno per nota.
+    // folderId null significa "senza cartella", coerente con createNote.
+    moveNotesToFolder(ids, folderId) {
+      const idSet = new Set(ids)
+      let touchedSelected = false
+      this.notes.forEach((note) => {
+        if (!idSet.has(note.id) || note.folderId === folderId) return
+        note.folderId = folderId
+        note.updatedAt = Date.now()
+        saveNoteNow(note)
+        if (note.id === this.selectedNoteId) touchedSelected = true
+      })
+      // Spostando una nota fuori dalla cartella in vista sparisce dalla
+      // lista: senza questo selectedNoteId resterebbe puntato a una nota non
+      // piu' visibile, con l'editor che mostra un contenuto irraggiungibile.
+      // In vista "Tutte le note" resta visibile e la selezione non si tocca.
+      if (touchedSelected && !this.visibleNotes.some((n) => n.id === this.selectedNoteId)) {
+        const next = this.visibleNotes[0]
+        this.selectedNoteId = next ? next.id : null
+      }
+    },
+
     restoreNote(id) {
       const note = this.notes.find((n) => n.id === id)
       if (!note) return
@@ -278,6 +323,22 @@ export const useNotesStore = defineStore('notes', {
       this.folders.push(folder)
       saveFoldersNow(this.folders)
       return folder
+    },
+
+    // L'ordine delle cartelle e' l'ordine dell'array: api.saveFolders
+    // persiste la sequenza cosi' com'e', quindi non serve un campo "order".
+    reorderFolders(fromIndex, toIndex) {
+      const last = this.folders.length - 1
+      if (
+        fromIndex === toIndex ||
+        fromIndex < 0 || fromIndex > last ||
+        toIndex < 0 || toIndex > last
+      ) {
+        return
+      }
+      const [moved] = this.folders.splice(fromIndex, 1)
+      this.folders.splice(toIndex, 0, moved)
+      saveFoldersNow(this.folders)
     },
 
     renameFolder(id, name) {

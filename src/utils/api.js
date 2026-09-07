@@ -33,7 +33,6 @@ const MENU_CHANNELS = [
   'menu:toggle-sidebar',
   'menu:settings',
   'menu:shortcuts',
-  'menu:toolbar-mode'
 ]
 
 export const api = {
@@ -47,7 +46,6 @@ export const api = {
     return bridgeEvent(channel, callback)
   },
 
-  syncToolbarMode: (mode) => invoke('menu_sync_toolbar_mode', { mode }),
   checkForUpdates: () => invoke('update_check_run'),
   getAppVersion: () => invoke('update_check_app_version'),
   onUpdateCheckStatus: (callback) => bridgeEvent('update-check:status', callback),

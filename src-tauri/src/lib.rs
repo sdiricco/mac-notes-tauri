@@ -48,12 +48,6 @@ fn store_reveal_in_finder(app: AppHandle) -> Result<(), String> {
 }
 
 #[tauri::command]
-fn menu_sync_toolbar_mode(app: AppHandle, mode: String) -> Result<bool, String> {
-    menu::set_toolbar_mode(&app, mode == "extended").map_err(|e| e.to_string())?;
-    Ok(true)
-}
-
-#[tauri::command]
 async fn update_check_run(app: AppHandle) -> update_check::UpdateStatus {
     let version = app.package_info().version.to_string();
     let status = update_check::check(version).await;
@@ -119,7 +113,6 @@ pub fn run() {
             store_delete_note,
             store_save_folders,
             store_reveal_in_finder,
-            menu_sync_toolbar_mode,
             update_check_run,
             update_check_app_version,
             set_window_theme,

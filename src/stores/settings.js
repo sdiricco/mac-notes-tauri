@@ -36,7 +36,6 @@ export const useSettingsStore = defineStore('settings', {
     pinnedOnly: false,
     spellcheck: false, // correzione ortografica disattivata di default
     spellLang: 'it', // lingua della correzione quando attiva
-    toolbarMode: 'compact', // 'compact' | 'extended' — menu "Vista > Toolbar"
     ...loadSaved()
   }),
 
@@ -83,12 +82,6 @@ export const useSettingsStore = defineStore('settings', {
       this.save()
     },
 
-    setToolbarMode(mode) {
-      if (mode !== 'compact' && mode !== 'extended') return
-      this.toolbarMode = mode
-      this.save()
-    },
-
     toggleSpellcheck() {
       this.spellcheck = !this.spellcheck
       this.save()
@@ -109,8 +102,7 @@ export const useSettingsStore = defineStore('settings', {
           sortDir: this.sortDir,
           pinnedOnly: this.pinnedOnly,
           spellcheck: this.spellcheck,
-          spellLang: this.spellLang,
-          toolbarMode: this.toolbarMode
+          spellLang: this.spellLang
         })
       )
     }

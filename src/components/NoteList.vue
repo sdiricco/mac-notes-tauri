@@ -5,7 +5,7 @@
          ordinamento (vedi sort-row), così la vista non "salta" cambiando
          del tutto struttura quando si entra/esce dalla modalità. -->
     <div class="note-list-header">
-      <h2>{{ folderTitle }}</h2>
+      <h2>{{ store.currentViewName }}</h2>
       <div class="header-actions">
         <button
           v-if="!store.isTrashView"
@@ -124,8 +124,8 @@
           </button>
         </div>
         <div class="note-meta">
-          <span class="note-date">{{ formatDate(note.updatedAt) }}</span>
-          <span class="note-preview">{{ preview(note.content) }}</span>
+          <span class="note-date">{{ formatNoteDate(note.updatedAt) }}</span>
+          <span class="note-preview">{{ notePreview(note.content) }}</span>
         </div>
       </div>
     </div>
@@ -190,6 +190,7 @@ import { Icon } from '@iconify/vue'
 import { useNotesStore } from '../stores/notes'
 import { useSettingsStore } from '../stores/settings'
 import { stripHtml, htmlToMarkdown } from '../utils/markdown'
+import { formatNoteDate, notePreview } from '../utils/noteDisplay'
 
 const store = useNotesStore()
 const settings = useSettingsStore()
@@ -204,13 +205,6 @@ const menuTargetNote = ref(null)
 const renamingId = ref(null)
 const renameValue = ref('')
 const renameInput = ref(null)
-
-const folderTitle = computed(() => {
-  if (store.isAllView) return 'Tutte le Note'
-  if (store.isPinnedView) return 'Preferiti'
-  if (store.isTrashView) return 'Cestino'
-  return store.currentFolder?.name || 'Note'
-})
 
 const SORT_LABELS = {
   updated: 'Data modifica',
@@ -435,20 +429,6 @@ function confirmBulkDelete() {
 // stato ambiguo tra viste diverse.
 watch(() => store.selectedFolderId, exitSelectionMode)
 
-function preview(content) {
-  const text = stripHtml(content)
-  return text.length ? text : 'Nessun testo aggiuntivo'
-}
-
-function formatDate(timestamp) {
-  const date = new Date(timestamp)
-  const now = new Date()
-  const isToday = date.toDateString() === now.toDateString()
-  if (isToday) {
-    return date.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })
-  }
-  return date.toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' })
-}
 
 </script>
 

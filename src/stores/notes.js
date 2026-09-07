@@ -73,6 +73,16 @@ export const useNotesStore = defineStore('notes', {
 
     currentFolder: (state) => state.folders.find((f) => f.id === state.selectedFolderId) || null,
 
+    // Nome della vista corrente, cartella reale o virtuale. Sta qui e non nei
+    // componenti perche' lo mostrano sia l'intestazione della lista sia il
+    // breadcrumb nell'header: due copie finirebbero per divergere.
+    currentViewName: (state) => {
+      if (state.selectedFolderId === ALL) return 'Tutte le Note'
+      if (state.selectedFolderId === PINNED) return 'Preferiti'
+      if (state.selectedFolderId === TRASH) return 'Cestino'
+      return state.folders.find((f) => f.id === state.selectedFolderId)?.name || 'Note'
+    },
+
     folderCount: (state) => (folderId) =>
       state.notes.filter((n) => n.folderId === folderId && !n.trashed).length,
 

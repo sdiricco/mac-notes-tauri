@@ -16,13 +16,13 @@
         "title": "Mac Notes Tauri",
         "width": 1200,
         "height": 800,
-        "minWidth": 820,
+        "minWidth": 660,
         "minHeight": 520,
         "titleBarStyle": "Overlay",
         "hiddenTitle": true,
         "trafficLightPosition": {
           "x": 14,
-          "y": 23
+          "y": 26
         },
         "backgroundColor": "#f6f6f6"
       }

@@ -10,39 +10,10 @@
 //! - "Porta tutto in primo piano" (role: front) non ha equivalente diretto:
 //!   omesso.
 
-use serde::Serialize;
-use std::sync::atomic::{AtomicBool, Ordering};
-use tauri::menu::{CheckMenuItem, Menu, MenuBuilder, MenuItem, PredefinedMenuItem, SubmenuBuilder};
+use tauri::menu::{Menu, MenuBuilder, MenuItem, PredefinedMenuItem, SubmenuBuilder};
 use tauri::{AppHandle, Emitter, Wry};
 
-/// Vive qui invece che nel frontend per lo stesso motivo dell'originale: la
-/// spunta sul radio "Vista > Toolbar" deve riflettere la preferenza reale
-/// anche se il menu viene ricostruito prima che il frontend l'abbia comunicata.
-static TOOLBAR_EXTENDED: AtomicBool = AtomicBool::new(false);
-
-#[derive(Serialize, Clone)]
-struct ToolbarModePayload(&'static str);
-
 pub fn build_menu(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
-    let extended = TOOLBAR_EXTENDED.load(Ordering::Relaxed);
-
-    let compact = CheckMenuItem::with_id(
-        app,
-        "toolbar-compact",
-        "Compatta",
-        true,
-        !extended,
-        None::<&str>,
-    )?;
-    let extended_item = CheckMenuItem::with_id(
-        app,
-        "toolbar-extended",
-        "Estesa",
-        true,
-        extended,
-        None::<&str>,
-    )?;
-
     let app_menu = SubmenuBuilder::new(app, "mac-notes-tauri")
         .item(&PredefinedMenuItem::about(app, None, None)?)
         .separator()
@@ -108,11 +79,6 @@ pub fn build_menu(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
         )?)
         .build()?;
 
-    let toolbar_submenu = SubmenuBuilder::new(app, "Toolbar")
-        .item(&compact)
-        .item(&extended_item)
-        .build()?;
-
     let view_menu = SubmenuBuilder::new(app, "Vista")
         .item(&MenuItem::with_id(
             app,
@@ -121,7 +87,6 @@ pub fn build_menu(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
             true,
             Some("CmdOrCtrl+/"),
         )?)
-        .item(&toolbar_submenu)
         .item(&MenuItem::with_id(app, "shortcuts", "Scorciatoie da tastiera", true, None::<&str>)?)
         .separator()
         .item(&PredefinedMenuItem::fullscreen(app, None)?)
@@ -152,46 +117,26 @@ pub fn build_menu(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
         .build()
 }
 
-/// Ricostruisce il menu con la spunta corretta. Il frontend chiama questo
-/// tramite `menu:sync-toolbar-mode` all'avvio, altrimenti la spunta
-/// mostrerebbe sempre "Compatta" anche con l'altra modalità attiva salvata
-/// in localStorage.
-pub fn set_toolbar_mode(app: &AppHandle, extended: bool) -> tauri::Result<()> {
-    TOOLBAR_EXTENDED.store(extended, Ordering::Relaxed);
-    let menu = build_menu(app)?;
-    app.set_menu(menu)?;
-    Ok(())
-}
-
 /// Dispatcher centrale: a differenza di Electron (una `click` per voce), qui
 /// tutti gli eventi menu arrivano a un solo handler distinto per `id`.
 pub fn handle_menu_event(app: &AppHandle, event_id: &str) {
     eprintln!("[mac-notes-tauri] menu event: {event_id}");
 
-    let send = |channel: &str, payload: Option<ToolbarModePayload>| {
-        let _ = match payload {
-            Some(p) => app.emit(channel, p),
-            None => app.emit(channel, ()),
-        };
+    // Nessuna voce porta piu' un payload (l'unica era il radio della
+    // toolbar, ora rimosso): il canale basta.
+    let send = |channel: &str| {
+        let _ = app.emit(channel, ());
     };
 
     match event_id {
-        "settings" => send("menu:settings", None),
-        "new-note" => send("menu:new-note", None),
-        "new-folder" => send("menu:new-folder", None),
-        "duplicate-note" => send("menu:duplicate-note", None),
-        "find-in-note" => send("menu:find-in-note", None),
-        "search-all" => send("menu:search-all", None),
-        "toggle-sidebar" => send("menu:toggle-sidebar", None),
-        "shortcuts" => send("menu:shortcuts", None),
-        "toolbar-compact" => {
-            let _ = set_toolbar_mode(app, false);
-            send("menu:toolbar-mode", Some(ToolbarModePayload("compact")));
-        }
-        "toolbar-extended" => {
-            let _ = set_toolbar_mode(app, true);
-            send("menu:toolbar-mode", Some(ToolbarModePayload("extended")));
-        }
+        "settings" => send("menu:settings"),
+        "new-note" => send("menu:new-note"),
+        "new-folder" => send("menu:new-folder"),
+        "duplicate-note" => send("menu:duplicate-note"),
+        "find-in-note" => send("menu:find-in-note"),
+        "search-all" => send("menu:search-all"),
+        "toggle-sidebar" => send("menu:toggle-sidebar"),
+        "shortcuts" => send("menu:shortcuts"),
         "help-repo" => {
             use tauri_plugin_opener::OpenerExt;
             let _ = app.opener().open_url("https://github.com", None::<&str>);

@@ -6,43 +6,66 @@
     </div>
 
     <template v-else>
-      <div class="editor-header">
+      <div ref="editorHeaderEl" class="editor-header">
         <!-- Toolbar di formattazione di Quill: montata qui (contenitore esterno,
              vedi toolbar-container su QuillEditor) per stare sopra ai pulsanti
              azione invece che nella posizione di default. -->
         <div ref="quillToolbarEl" class="floating-toolbar"></div>
 
-        <!-- Azioni sempre visibili: cerca, preferiti, cestino. Il resto (poco
-             usato) sta nel menu overflow "⋮" invece di affollare la pillola,
-             così l'header non deve mai andare a capo. -->
+        <!-- Cerca, preferiti e cestino: visibili qui a header largo, mentre le
+             azioni poco usate stanno sempre nel menu "⋮" invece di affollare
+             la pillola. A header stretto (compactActions) anche questi tre
+             migrano nel menu, così la toolbar di formattazione si tiene lo
+             spazio invece di spartirlo. -->
         <div class="action-card">
-          <button class="icon-btn" title="Cerca nella nota (⌘F)" @click="quillEditorRef?.toggleFindBar()">
-            <Icon icon="lucide:search" />
-          </button>
-          <button
-            class="icon-btn"
-            :title="store.selectedNote.pinned ? 'Rimuovi dai preferiti' : 'Aggiungi ai preferiti'"
-            @click="store.togglePin(store.selectedNote.id)"
-          >
-            <Icon icon="lucide:star" :class="{ filled: store.selectedNote.pinned }" />
-          </button>
-          <button
-            v-if="!store.selectedNote.trashed"
-            class="icon-btn"
-            title="Sposta nel cestino"
-            @click="confirmTrash"
-          >
-            <Icon icon="lucide:trash-2" />
-          </button>
-          <button v-else class="icon-btn" title="Ripristina" @click="store.restoreNote(store.selectedNote.id)">
-            <Icon icon="lucide:rotate-ccw" />
-          </button>
+          <template v-if="!compactActions">
+            <button class="icon-btn" title="Cerca nella nota (⌘F)" @click="quillEditorRef?.toggleFindBar()">
+              <Icon icon="lucide:search" />
+            </button>
+            <button
+              class="icon-btn"
+              :title="store.selectedNote.pinned ? 'Rimuovi dai preferiti' : 'Aggiungi ai preferiti'"
+              @click="store.togglePin(store.selectedNote.id)"
+            >
+              <Icon icon="lucide:star" :class="{ filled: store.selectedNote.pinned }" />
+            </button>
+            <button
+              v-if="!store.selectedNote.trashed"
+              class="icon-btn"
+              title="Sposta nel cestino"
+              @click="confirmTrash"
+            >
+              <Icon icon="lucide:trash-2" />
+            </button>
+            <button v-else class="icon-btn" title="Ripristina" @click="store.restoreNote(store.selectedNote.id)">
+              <Icon icon="lucide:rotate-ccw" />
+            </button>
+          </template>
 
           <div ref="actionOverflowEl" class="action-overflow">
             <button class="icon-btn" title="Altre azioni" @click="actionMenuOpen = !actionMenuOpen">
               <Icon icon="lucide:more-vertical" />
             </button>
             <div v-if="actionMenuOpen" class="action-overflow-menu">
+              <template v-if="compactActions">
+                <button @click="quillEditorRef?.toggleFindBar(); actionMenuOpen = false">
+                  <Icon icon="lucide:search" />
+                  <span>Cerca nella nota</span>
+                </button>
+                <button @click="store.togglePin(store.selectedNote.id); actionMenuOpen = false">
+                  <Icon icon="lucide:star" :class="{ filled: store.selectedNote.pinned }" />
+                  <span>{{ store.selectedNote.pinned ? 'Rimuovi dai preferiti' : 'Aggiungi ai preferiti' }}</span>
+                </button>
+                <button v-if="!store.selectedNote.trashed" @click="confirmTrash(); actionMenuOpen = false">
+                  <Icon icon="lucide:trash-2" />
+                  <span>Sposta nel cestino</span>
+                </button>
+                <button v-else @click="store.restoreNote(store.selectedNote.id); actionMenuOpen = false">
+                  <Icon icon="lucide:rotate-ccw" />
+                  <span>Ripristina</span>
+                </button>
+                <div class="action-overflow-sep"></div>
+              </template>
               <button @click="importNote(); actionMenuOpen = false">
                 <Icon icon="lucide:upload" />
                 <span>Importa Markdown</span>
@@ -66,11 +89,10 @@
 
       <QuillEditor
         ref="quillEditorRef"
-        :key="`${store.selectedNote.id}-${reloadCounter}-${settings.toolbarMode}`"
+        :key="`${store.selectedNote.id}-${reloadCounter}`"
         :note-id="store.selectedNote.id"
         :content="store.selectedNote.content"
         :toolbar-container="quillToolbarEl"
-        :toolbar-mode="settings.toolbarMode"
         class="editor-body"
         @change="onContentChange"
       />
@@ -100,7 +122,7 @@
 </template>
 
 <script setup>
-import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import Dialog from 'primevue/dialog'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
@@ -132,6 +154,16 @@ const markdownPreviewText = ref('')
 const actionMenuOpen = ref(false)
 const actionOverflowEl = ref(null)
 
+// Si osserva la larghezza dell'HEADER, non della finestra: l'editor si
+// restringe anche trascinando i divisori dei pannelli, a finestra invariata.
+// Soglia sotto la quale i tre pulsanti migrano nel menu "⋮"; l'editor non
+// scende sotto 380px (vedi EDITOR_MIN in App.vue), quindi 470 lascia una
+// fascia utile di stati compatti.
+const ACTIONS_COMPACT_BELOW = 470
+const editorHeaderEl = ref(null)
+const compactActions = ref(false)
+let headerResizeObserver = null
+
 function onGlobalMousedown(event) {
   if (actionMenuOpen.value && actionOverflowEl.value && !actionOverflowEl.value.contains(event.target)) {
     actionMenuOpen.value = false
@@ -146,9 +178,25 @@ onMounted(() => {
   window.addEventListener('mousedown', onGlobalMousedown)
   offFindInNote = api.onMenu('menu:find-in-note', () => quillEditorRef.value?.toggleFindBar())
 })
+
+// L'header sta dentro il ramo "nota selezionata": al mount il ref puo' essere
+// ancora null (nessuna nota aperta) e l'observer non si aggancerebbe mai.
+// Osservando il ref si aggancia quando l'elemento compare, e si stacca
+// quando sparisce.
+watch(editorHeaderEl, (el) => {
+  headerResizeObserver?.disconnect()
+  headerResizeObserver = null
+  if (!el) return
+  headerResizeObserver = new ResizeObserver(([entry]) => {
+    compactActions.value = entry.contentRect.width < ACTIONS_COMPACT_BELOW
+  })
+  headerResizeObserver.observe(el)
+}, { immediate: true })
 onBeforeUnmount(() => {
   window.removeEventListener('mousedown', onGlobalMousedown)
   offFindInNote?.()
+  headerResizeObserver?.disconnect()
+  headerResizeObserver = null
 })
 
 function openMarkdownPreview() {
@@ -267,6 +315,15 @@ async function copyNote() {
   flex-direction: column;
   gap: 1px;
 }
+/* Separa le azioni migrate dall'header (cerca/preferiti/cestino) da quelle
+   che vivono sempre nel menu: senza, a header stretto sembrerebbero un unico
+   elenco indistinto. */
+.action-overflow-sep {
+  height: 1px;
+  margin: 4px 6px;
+  background: var(--p-content-border-color);
+}
+
 .action-overflow-menu button {
   display: flex;
   align-items: center;
@@ -571,8 +628,11 @@ async function copyNote() {
   content: attr(data-tooltip);
   position: absolute;
   top: 100%;
-  left: 50%;
-  transform: translateX(-50%);
+  /* Ancorato al bordo SINISTRO del controllo, non centrato: centrandolo, metà
+     del tooltip sborda a sinistra e sul primo controllo della barra viene
+     ritagliata da overflow:hidden del pannello. La barra sta a sinistra
+     nell'header, quindi verso destra lo spazio c'è. */
+  left: 0;
   margin-top: 6px;
   padding: 4px 8px;
   border-radius: 6px;
@@ -580,11 +640,33 @@ async function copyNote() {
   border: 1px solid var(--p-content-border-color);
   color: var(--p-text-color);
   font-size: 11px;
+  /* Peso e stile dichiarati, non ereditati: il tooltip è un ::after sul
+     controllo, e prendeva il grassetto corsivo di .style-dropdown-toggle
+     (che serve a far sembrare "Aa" un indicatore di stile testo). Lo stesso
+     accadrebbe con qualunque altro controllo stilizzato aggiunto in futuro. */
+  font-weight: 400;
+  font-style: normal;
+  /* Una riga sola: le etichette sono corte per scelta (vedi
+     TOOLBAR_TOOLTIPS in QuillEditor), quindi non serve mandarle a capo e il
+     tooltip resta compatto. */
   white-space: nowrap;
   z-index: 30;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
   pointer-events: none;
 }
+/* Tooltip soppressi mentre un pannello e' aperto: il mouse resta sul toggle
+   dopo il click, e il tooltip (z-index 30) coprirebbe il pannello (20).
+   La classe la mette il JS a ogni apertura/chiusura, vedi
+   syncOpenDropdownClass in QuillEditor. */
+.floating-toolbar.has-open-dropdown :deep([data-tooltip]):hover::after {
+  display: none;
+}
+/* Stessa cosa per i picker nativi di Quill (titolo, elenco), che non passano
+   dai nostri dropdown ma si espandono con una classe propria. */
+.floating-toolbar :deep(.ql-picker.ql-expanded .ql-picker-label:hover::after) {
+  display: none;
+}
+
 .floating-toolbar :deep(.ql-picker-label:hover .ql-stroke),
 .floating-toolbar :deep(.ql-picker.ql-expanded .ql-picker-label .ql-stroke) {
   stroke: var(--p-text-color);

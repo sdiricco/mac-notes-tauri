@@ -433,11 +433,25 @@ async function copyNote() {
    dell'header. Il contenuto della toolbar (bottoni/select) è iniettato da
    Quill in modo imperativo: serve :deep() perché non fa parte del template
    compilato di questo componente. ---- */
-.floating-toolbar,
+/* Solo la pillola delle azioni non si restringe: deve restare integra. La
+   toolbar invece cede spazio e scorre al suo interno (vedi sotto) — con
+   flex-shrink: 0 anche su di lei non si restringeva mai, quindi eccedeva
+   dalla riga e lo scroll non entrava in funzione. */
 .action-card {
   width: fit-content;
   max-width: 100%;
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+}
+
+.floating-toolbar {
+  /* Prende lo spazio che resta dopo la pillola azioni e ci scorre dentro.
+     min-width: 0 e' indispensabile: senza, il minimo automatico del flex
+     item resta la larghezza del contenuto e l'elemento non si restringe. */
+  flex: 1 1 0;
+  min-width: 0;
   display: flex;
   align-items: center;
   flex-wrap: nowrap;
@@ -451,16 +465,27 @@ async function copyNote() {
   border: none !important;
   padding: 0 !important;
   background: transparent !important;
-  /* NIENTE overflow-x:auto qui: per spec CSS, un overflow-x diverso da
-     "visible" forza anche overflow-y a comportarsi come "auto" sullo stesso
-     elemento, e questo contenitore ospita i menu a discesa/pannello overflow
-     di Quill (position:absolute) — verrebbero ritagliati e risulterebbero
-     "apribili" nel DOM (classe ql-expanded, dimensioni corrette) ma invisibili
-     a schermo. In modalità estesa a finestra stretta i controlli restano
-     quindi semplicemente su una riga che eccede, senza scroll dedicato.
-     min-width:0 evita solo che il flex item forzi la finestra a slargarsi. */
+  /* Barra piatta con tutti i controlli: a larghezza insufficiente scorre in
+     orizzontale invece di eccedere dalla riga. overflow-y: hidden esplicito
+     perche' per la spec CSS un asse "visible" accanto a uno che non lo e'
+     diventa "auto" — dichiararlo evita una barra verticale spuria su un
+     elemento alto 25px.
+     Conseguenza: tutto cio' che si apre sotto un controllo verrebbe
+     ritagliato. Per questo il tooltip e' un elemento teleportato in
+     position:fixed e le opzioni del picker dei titoli vengono riposizionate
+     in fixed al click (vedi QuillEditor); il picker colore era gia'
+     teleportato. */
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
   min-width: 0;
 }
+/* Barra di scorrimento nascosta: su 25px di altezza occuperebbe piu' spazio
+   del contenuto. Si scorre con trackpad/rotella. */
+.floating-toolbar::-webkit-scrollbar {
+  display: none;
+}
+
 
 .floating-toolbar :deep(.ql-formats) {
   display: inline-flex;
@@ -615,56 +640,6 @@ async function copyNote() {
   fill: none;
   stroke: var(--icon-color);
   stroke-width: 1.2px;
-}
-
-/* Tooltip custom via data-tooltip invece dell'attributo title nativo: in
-   WKWebView il tooltip nativo è lento/inconsistente su bottoni dentro un
-   pannello position:absolute — stesso principio già seguito per il picker
-   colore/evidenziazione, non fidarsi del comportamento nativo qui. */
-.floating-toolbar :deep([data-tooltip]) {
-  position: relative;
-}
-.floating-toolbar :deep([data-tooltip]):hover::after {
-  content: attr(data-tooltip);
-  position: absolute;
-  top: 100%;
-  /* Ancorato al bordo SINISTRO del controllo, non centrato: centrandolo, metà
-     del tooltip sborda a sinistra e sul primo controllo della barra viene
-     ritagliata da overflow:hidden del pannello. La barra sta a sinistra
-     nell'header, quindi verso destra lo spazio c'è. */
-  left: 0;
-  margin-top: 6px;
-  padding: 4px 8px;
-  border-radius: 6px;
-  background: var(--editor-toolbar-bg);
-  border: 1px solid var(--p-content-border-color);
-  color: var(--p-text-color);
-  font-size: 11px;
-  /* Peso e stile dichiarati, non ereditati: il tooltip è un ::after sul
-     controllo, e prendeva il grassetto corsivo di .style-dropdown-toggle
-     (che serve a far sembrare "Aa" un indicatore di stile testo). Lo stesso
-     accadrebbe con qualunque altro controllo stilizzato aggiunto in futuro. */
-  font-weight: 400;
-  font-style: normal;
-  /* Una riga sola: le etichette sono corte per scelta (vedi
-     TOOLBAR_TOOLTIPS in QuillEditor), quindi non serve mandarle a capo e il
-     tooltip resta compatto. */
-  white-space: nowrap;
-  z-index: 30;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
-  pointer-events: none;
-}
-/* Tooltip soppressi mentre un pannello e' aperto: il mouse resta sul toggle
-   dopo il click, e il tooltip (z-index 30) coprirebbe il pannello (20).
-   La classe la mette il JS a ogni apertura/chiusura, vedi
-   syncOpenDropdownClass in QuillEditor. */
-.floating-toolbar.has-open-dropdown :deep([data-tooltip]):hover::after {
-  display: none;
-}
-/* Stessa cosa per i picker nativi di Quill (titolo, elenco), che non passano
-   dai nostri dropdown ma si espandono con una classe propria. */
-.floating-toolbar :deep(.ql-picker.ql-expanded .ql-picker-label:hover::after) {
-  display: none;
 }
 
 .floating-toolbar :deep(.ql-picker-label:hover .ql-stroke),

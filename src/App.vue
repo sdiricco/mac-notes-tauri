@@ -3,85 +3,75 @@
     <Icon icon="lucide:loader-circle" class="spin" />
   </div>
   <template v-else>
+    <!-- app-root e' una RIGA: cartelle e lista stanno "dalla testa ai piedi"
+         a sinistra, e l'header vive nella colonna di destra sopra il solo
+         editor. Prima era una colonna con l'header a tutta larghezza sopra
+         tutto. -->
     <div class="app-root">
-      <AppHeader
-        ref="appHeaderRef"
-        :sidebar-visible="ui.sidebarVisible"
-        :narrow="isNarrow"
-        @toggle-sidebar="ui.toggleSidebar()"
-      />
+      <!-- Larghezza in pixel e non in percentuale: in percentuale il minimo
+           del pannello valeva ~98px a finestra stretta e ~260px a schermo
+           intero, cioe' non era un vincolo utile. -->
+        <!-- I semafori della finestra sono disegnati in alto a sinistra, che e'
+           sopra il pannello laterale e non sopra l'header: questa striscia
+           lascia loro lo spazio ed e' l'area con cui si sposta la finestra da
+           questo lato. Larga solo la zona dei semafori, non tutto il
+           pannello: la banda contiene i pulsanti della vista, e coprirli li
+           renderebbe inerti. -->
+      <div
+        v-if="sidebarInLayout"
+        class="browse-drag"
+        data-tauri-drag-region="deep"
+      ></div>
 
-      <!-- Layout a larghezze fisse in pixel invece del Splitter di PrimeVue.
-           Motivo: PrimeVue ridimensiona sempre *la coppia* di pannelli adiacenti
-           conservandone la somma, quindi trascinando il divisorio di sinistra
-           cambiavano per forza sia sidebar sia lista. Qui ogni divisorio muove
-           solo il pannello che ha a sinistra e l'editor assorbe la differenza,
-           come in Mail/Note di macOS. In più i vincoli sono veri pixel: in
-           percentuale il minimo della sidebar valeva ~98px a finestra stretta
-           e ~260px a schermo intero, cioè non era un vincolo utile. -->
-      <div class="app-shell">
-        <!-- Cartelle + lista note insieme: sopra DRAWER_BELOW questo wrapper è
-             `display: contents`, quindi i suoi figli restano flex item della
-             shell e il layout a tre pannelli è esattamente quello di prima.
-             Sotto la soglia diventa un cassetto sovrapposto che li contiene
-             entrambi, lasciando all'editor tutta la larghezza.
-             Un wrapper e non due elementi alternativi: spostare i componenti
-             in un altro punto del template li rimonterebbe, perdendo lo stato
-             locale (una rinomina in corso, una cartella in creazione). -->
-        <div
-          v-show="!isNarrow || ui.sidebarVisible"
-          class="browse"
-          :class="{ 'is-drawer': isNarrow }"
-        >
-          <!-- Nel cassetto le cartelle ci sono sempre: e' il cassetto intero
-               che si apre e chiude. Nel flusso, invece, il tasto nasconde
-               queste lasciando la lista al suo posto. -->
-          <div
-            v-show="isNarrow || ui.sidebarVisible"
-            class="pane sidebar-panel"
-            :style="isNarrow ? null : { width: sidebarWidth + 'px' }"
-          >
-            <Sidebar />
-          </div>
-          <!-- I divisori servono solo nel flusso: nel cassetto le larghezze
-               sono fisse e non c'è nulla da trascinare. -->
-          <div
-            v-show="sidebarInLayout"
-            class="divider"
-            role="separator"
-            aria-orientation="vertical"
-            aria-label="Ridimensiona la barra laterale"
-            @mousedown="startDrag('sidebar', $event)"
-            @dblclick="resetPane('sidebar')"
-          ></div>
-
-          <div class="pane list-panel" :style="isNarrow ? null : { width: listWidth + 'px' }">
-            <NoteList />
-          </div>
-        </div>
-
-        <div
-          v-show="!isNarrow"
-          class="divider"
-          role="separator"
-          aria-orientation="vertical"
-          aria-label="Ridimensiona la lista delle note"
-          @mousedown="startDrag('list', $event)"
-          @dblclick="resetPane('list')"
-        ></div>
-
-        <!-- Velo: chiude il cassetto cliccando sull'editor, che altrimenti
-             resterebbe coperto senza un modo ovvio di tornare. -->
-        <div
-          v-if="isNarrow && ui.sidebarVisible"
-          class="drawer-backdrop"
-          @click="ui.toggleSidebar()"
-        ></div>
-
-        <div class="pane editor-pane">
-          <NoteEditor />
-        </div>
+      <!-- UN SOLO pannello laterale con due viste alternative: note (di
+           default) e cartelle, come in un master-detail. Prima erano due
+           pannelli affiancati, ognuno con la sua larghezza e il suo
+           divisorio.
+           v-if e non v-show: cambiare vista e' una navigazione esplicita,
+           quindi perdere lo stato locale (una rinomina a metà) e' corretto,
+           e tenere montati entrambi costerebbe due liste sempre vive. -->
+      <div
+        v-show="ui.sidebarVisible"
+        class="pane sidebar-panel"
+        :class="{ 'is-drawer': isNarrow, 'folders-view': ui.sidebarView === 'folders' }"
+        :style="isNarrow ? null : { width: sidebarWidth + 'px' }"
+      >
+        <Sidebar v-if="ui.sidebarView === 'folders'" />
+        <NoteList v-else ref="noteListRef" />
       </div>
+
+      <!-- Un solo divisorio: c'e' un solo pannello da ridimensionare. -->
+      <div
+        v-show="sidebarInLayout"
+        class="divider"
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="Ridimensiona il pannello laterale"
+        @mousedown="startDrag($event)"
+        @dblclick="resetPane()"
+      ></div>
+
+      <!-- Velo: chiude il pannello sovrapposto cliccando sull'editor, che
+           altrimenti resterebbe coperto senza un modo ovvio di tornare. -->
+      <div
+        v-if="isNarrow && ui.sidebarVisible"
+        class="drawer-backdrop"
+        @click="ui.toggleSidebar()"
+      ></div>
+
+        <!-- Colonna di destra: l'header sta qui, non sopra tutto, così le
+             cartelle arrivano fino in cima alla finestra. -->
+        <div class="main-col">
+          <AppHeader
+            :sidebar-visible="ui.sidebarVisible"
+            :narrow="isNarrow"
+            :browse-in-layout="sidebarInLayout"
+            @toggle-sidebar="ui.toggleSidebar()"
+          />
+          <div class="pane editor-pane">
+            <NoteEditor />
+          </div>
+        </div>
     </div>
 
     <SettingsDialog />
@@ -93,7 +83,7 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import ConfirmDialog from 'primevue/confirmdialog'
 import Toast from 'primevue/toast'
 import { Icon } from '@iconify/vue'
@@ -113,72 +103,51 @@ const store = useNotesStore()
 const settings = useSettingsStore()
 const ui = useUiStore()
 const updateCheck = useUpdateCheckStore()
-const appHeaderRef = ref(null)
+const noteListRef = ref(null)
 const unsubscribers = []
 
-// Vincoli in pixel dei due pannelli a larghezza fissa. L'editor non ha una
-// larghezza propria (flex: 1): assorbe tutto lo spazio restante, quindi il
-// suo minimo va imposto qui come tetto agli altri due — senza, trascinando
-// si potrebbe schiacciarlo a zero.
-const PANES = {
-  sidebar: { min: 180, max: 340, default: 220 },
-  list: { min: 240, max: 520, default: 320 }
-}
-// 380 e non di più: da DRAWER_BELOW in su i tre pannelli stanno nel flusso e
-// i loro minimi sommati devono starci — 180 + 240 + 380 + 2 divisori = 802px,
-// contro gli 820 della soglia. Alzandolo si taglierebbe l'editor invece di
-// fargli rispettare il minimo (con 420 si sforava).
+// Vincoli in pixel del pannello laterale. L'editor non ha una larghezza
+// propria (flex: 1): assorbe lo spazio restante, quindi il suo minimo va
+// imposto qui come tetto al pannello — senza, trascinando si potrebbe
+// schiacciarlo a zero.
+const SIDEBAR = { min: 240, max: 420, default: 300 }
 const EDITOR_MIN = 380
-// Sotto questa larghezza cartelle e lista escono dal flusso e si aprono
-// insieme in un cassetto sovrapposto, lasciando all'editor tutta la
-// larghezza. 820 non e' arbitrario: e' la soglia sotto la quale i tre
-// pannelli nel flusso non stanno piu' nei loro minimi (180 + 240 + 380 + 2
-// divisori = 802px). Con un valore piu' basso ci sarebbe una fascia in cui
-// restano tutti nel flusso senza spazio a sufficienza, e l'editor verrebbe
-// schiacciato sotto il proprio minimo. Sotto la soglia nel flusso resta solo
-// l'editor (380px), ed e' cio' che permette alla finestra di scendere a 660
-// (vedi minWidth in tauri.conf.json).
-const DRAWER_BELOW = 820
-
-const isNarrow = ref(false)
-// La sidebar occupa spazio nel layout solo se e' visibile E non sovrapposta:
-// da sovrapposta e' in position:absolute e non entra nei calcoli.
-// Le cartelle occupano spazio nel layout solo a finestra larga e con il
-// pannello aperto: nel cassetto sono in position:absolute e non entrano nei
-// calcoli. La lista, invece, e' nel flusso ogni volta che non c'e' il
-// cassetto.
-const listInLayout = computed(() => !isNarrow.value)
-const sidebarInLayout = computed(() => !isNarrow.value && ui.sidebarVisible)
-// Larghezza del divisorio *nel layout*: 1px. L'area afferrabile è più larga
-// (9px) ma è un overlay in position:absolute, che non occupa spazio — vedi
-// .divider::after nel CSS. Qui serve quella di layout, per i calcoli.
+// Larghezza del divisorio *nel layout*: 1px. L'area afferrabile e' piu' larga
+// (9px) ma e' un overlay in position:absolute, che non occupa spazio — vedi
+// .divider::after nel CSS.
 const DIVIDER = 1
 
-const sidebarWidth = ref(PANES.sidebar.default)
-const listWidth = ref(PANES.list.default)
+// Sotto questa larghezza il pannello esce dal flusso e si apre sovrapposto,
+// lasciando all'editor tutta la larghezza. 640 non e' arbitrario: e' la
+// soglia sotto la quale pannello ed editor non stanno piu' nei loro minimi
+// (240 + 1 + 380 = 621). Con un valore piu' basso ci sarebbe una fascia in
+// cui restano entrambi nel flusso senza spazio, e l'editor verrebbe
+// schiacciato sotto il proprio minimo.
+const DRAWER_BELOW = 640
+
+const isNarrow = ref(false)
+// Occupa spazio nel layout solo se visibile E non sovrapposto: da
+// sovrapposto e' in position:absolute e non entra nei calcoli.
+const sidebarInLayout = computed(() => !isNarrow.value && ui.sidebarVisible)
+
+const sidebarWidth = ref(SIDEBAR.default)
 
 // Limite superiore effettivo: il massimo preferito, ma non oltre lo spazio
-// che resta lasciando all'editor il suo minimo. Ricalcolato a ogni
-// movimento perché dipende dalla larghezza corrente della finestra e
-// dell'altro pannello.
-function maxFor(pane) {
-  const dividers = (sidebarInLayout.value ? DIVIDER : 0) + (listInLayout.value ? DIVIDER : 0)
-  const other =
-    pane === 'sidebar' ? listWidth.value : (sidebarInLayout.value ? sidebarWidth.value : 0)
-  const available = window.innerWidth - other - dividers - EDITOR_MIN
-  return Math.min(PANES[pane].max, available)
+// che resta lasciando all'editor il suo minimo. Ricalcolato a ogni movimento
+// perche' dipende dalla larghezza corrente della finestra.
+function maxFor() {
+  return Math.min(SIDEBAR.max, window.innerWidth - DIVIDER - EDITOR_MIN)
 }
 
-function clamp(pane, value) {
-  return Math.max(PANES[pane].min, Math.min(maxFor(pane), value))
+function clamp(value) {
+  return Math.max(SIDEBAR.min, Math.min(maxFor(), value))
 }
 
 let drag = null
 
-function startDrag(pane, event) {
+function startDrag(event) {
   event.preventDefault() // impedisce la selezione del testo durante il trascinamento
-  const current = pane === 'sidebar' ? sidebarWidth.value : listWidth.value
-  drag = { pane, startX: event.clientX, startWidth: current }
+  drag = { startX: event.clientX, startWidth: sidebarWidth.value }
   window.addEventListener('mousemove', onDrag)
   window.addEventListener('mouseup', endDrag)
   document.body.classList.add('is-resizing')
@@ -186,9 +155,7 @@ function startDrag(pane, event) {
 
 function onDrag(event) {
   if (!drag) return
-  const next = clamp(drag.pane, drag.startWidth + (event.clientX - drag.startX))
-  if (drag.pane === 'sidebar') sidebarWidth.value = next
-  else listWidth.value = next
+  sidebarWidth.value = clamp(drag.startWidth + (event.clientX - drag.startX))
 }
 
 function endDrag() {
@@ -199,12 +166,9 @@ function endDrag() {
 }
 
 // Doppio click sul divisorio: torna alla larghezza di partenza, come fanno
-// molti editor. Costa due righe e evita di restare incastrati in una
-// larghezza scomoda.
-function resetPane(pane) {
-  const next = clamp(pane, PANES[pane].default)
-  if (pane === 'sidebar') sidebarWidth.value = next
-  else listWidth.value = next
+// molti editor. Evita di restare incastrati in una larghezza scomoda.
+function resetPane() {
+  sidebarWidth.value = clamp(SIDEBAR.default)
 }
 
 // Rimpicciolendo la finestra i due pannelli fissi resterebbero larghi come
@@ -212,25 +176,28 @@ function resetPane(pane) {
 // ri-applicano i limiti, che dipendono da window.innerWidth.
 function onWindowResize() {
   const narrow = window.innerWidth < DRAWER_BELOW
-  // Entrando in modalita' sovrapposta la sidebar va chiusa: restando aperta
-  // coprirebbe il contenuto proprio nel momento in cui lo spazio scarseggia.
-  // Uscendone si riapre, tornando allo stato atteso a finestra larga.
+  // Entrando in modalita' sovrapposta il pannello va chiuso: restando aperto
+  // coprirebbe il contenuto proprio quando lo spazio scarseggia. Uscendone si
+  // riapre, tornando allo stato atteso a finestra larga.
   if (narrow !== isNarrow.value) {
     isNarrow.value = narrow
     if (narrow === ui.sidebarVisible) ui.toggleSidebar()
   }
-  // A cassetto attivo ne' cartelle ne' lista sono nel flusso: le larghezze
-  // trascinabili non sono applicate, e vincolarle sulla finestra stretta le
-  // schiaccerebbe ai minimi per poi ritrovarle tali tornando larghi.
-  if (listInLayout.value) {
-    listWidth.value = clamp('list', listWidth.value)
-    sidebarWidth.value = clamp('sidebar', sidebarWidth.value)
-  }
+  if (sidebarInLayout.value) sidebarWidth.value = clamp(sidebarWidth.value)
 }
 
-// Si chiude scegliendo una NOTA, non una cartella: la lista vive dentro il
-// cassetto, quindi dopo aver scelto la cartella si deve poter scegliere la
-// nota. E' l'apertura della nota a voler l'editor libero.
+// Scegliendo una cartella si torna alla vista note: e' il senso del
+// master-detail. Un watch e non una chiamata in Sidebar perche' selectFolder
+// viene invocata da piu' punti (click sulla voce, menu contestuale, creazione
+// di una cartella nuova), e uno dimenticato lascerebbe il pannello sulle
+// cartelle.
+watch(
+  () => store.selectedFolderId,
+  () => ui.showNotes()
+)
+
+// Aprendo una nota il pannello sovrapposto si chiude: e' il momento in cui si
+// vuole l'editor libero.
 watch(
   () => store.selectedNoteId,
   () => {
@@ -259,7 +226,16 @@ onMounted(async () => {
     api.onMenu('menu:duplicate-note', () => {
       if (store.selectedNoteId) store.duplicateNote(store.selectedNoteId)
     }),
-    api.onMenu('menu:search-all', () => appHeaderRef.value?.openSearch()),
+    // La ricerca vive nella banda della vista note, che e' montata solo a
+    // pannello visibile e su quella vista: entrambe le condizioni vanno
+    // soddisfatte prima, altrimenti il componente non esiste e non c'e'
+    // nulla da mettere a fuoco.
+    api.onMenu('menu:search-all', async () => {
+      if (!ui.sidebarVisible) ui.toggleSidebar()
+      ui.showNotes()
+      await nextTick()
+      noteListRef.value?.openSearch()
+    }),
     api.onMenu('menu:toggle-sidebar', () => ui.toggleSidebar()),
     api.onMenu('menu:settings', () => ui.openSettings()),
     api.onMenu('menu:shortcuts', () => ui.openShortcuts())
@@ -294,19 +270,34 @@ onBeforeUnmount(() => {
 
 /* L'header occupa la sua altezza, i pannelli il resto: la shell non e' piu
    alta 100vh ma quello che rimane sotto la barra. */
+/* Riga e non colonna: cartelle e lista arrivano da cima a fondo finestra, e
+   l'header vive nella colonna di destra sopra il solo editor.
+   position: relative e' l'origine del cassetto sovrapposto, del suo velo e
+   della striscia di trascinamento. */
 .app-root {
+  position: relative;
   height: 100vh;
+  display: flex;
+  overflow: hidden;
+}
+
+/* Colonna di destra: header sopra, editor sotto. */
+.main-col {
+  flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
 }
 
-.app-shell {
-  position: relative; /* origine per la sidebar sovrapposta e il suo velo */
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  overflow: hidden;
+/* Striscia sopra cartelle+lista: solo lo spazio dei semafori, niente
+   sfondo. z-index sopra i pannelli, sotto il cassetto (20). */
+.browse-drag {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 48px;
+  z-index: 10;
 }
 
 /* I due pannelli a sinistra hanno una larghezza esplicita in px (inline);
@@ -329,37 +320,59 @@ onBeforeUnmount(() => {
   background: var(--sidebar-bg);
 }
 
-/* display: contents -> il wrapper non genera una box: cartelle, divisorio e
-   lista restano flex item diretti della shell, con le loro larghezze inline.
-   E' cio' che permette di avere un solo albero DOM per le due modalita'. */
-.browse {
-  display: contents;
+/* Spazio per i semafori, che cadono sul pannello piu' a sinistra e non
+   sull'header. Le cartelle cedono spazio in ALTEZZA: la loro prima voce
+   inizia sotto la banda dei semafori. */
+.browse:not(.is-drawer) > .sidebar-panel {
+  padding-top: 48px;
 }
 
-/* Cassetto (finestra stretta): fuori dal flusso, quindi l'editor si prende
-   tutta la larghezza come se cartelle e lista non esistessero.
-   z-index sopra i divisori (che stanno a 5) e sopra il velo (15). */
-.browse.is-drawer {
-  display: flex;
+/* La lista invece cede spazio in LARGHEZZA quando diventa il pannello piu' a
+   sinistra: un rientro dall'alto la faceva "affondare", con una banda vuota
+   sopra il titolo. Cosi' resta in cima e il titolo comincia dopo i semafori.
+   E' lo stesso accorgimento (.note-list-header.inset) che il codice usava
+   prima del layout a colonna piena. */
+.browse:not(.is-drawer).folders-hidden .note-list-header {
+  padding-left: 74px;
+}
+
+/* Sovrapposto (finestra stretta): fuori dal flusso, quindi l'editor si
+   prende tutta la larghezza come se il pannello non esistesse. Da cima a
+   fondo finestra. z-index sopra il divisorio (5) e il velo (15). */
+.sidebar-panel.is-drawer {
   position: absolute;
   top: 0;
   bottom: 0;
   left: 0;
-  /* min() e non una larghezza fissa: a 660px di finestra (il minimo) un
-     cassetto da 520 lascerebbe appena 140px di editor dietro al velo. */
-  width: min(520px, 84%);
+  /* min() e non una larghezza fissa: alla finestra minima un pannello da
+     320px lascerebbe pochissimo editor dietro al velo. */
+  width: min(320px, 82%);
   z-index: 20;
   box-shadow: 2px 0 16px rgba(0, 0, 0, 0.28);
   border-right: 1px solid var(--p-content-border-color);
 }
-/* Dentro il cassetto le larghezze inline non ci sono (vedi :style nel
-   template): le cartelle restano fisse e la lista prende il resto. */
-.browse.is-drawer > .sidebar-panel {
-  flex: 0 0 200px;
+
+/* SOLO la zona dei semafori, non tutta la banda: la banda ora contiene i
+   pulsanti (indietro, cerca, nuova nota) e questa striscia sta sopra di
+   loro, quindi allargandola ne intercetta i click e li rende inerti — non
+   c'entrano i drag region, e' l'elemento sovrapposto a ricevere il click.
+   Larghezza fissa: i tre tasti finestra occupano ~68px da x:14. */
+.browse-drag {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 74px;
+  height: 48px;
+  z-index: 10;
 }
-.browse.is-drawer > .list-panel {
-  flex: 1 1 0;
-  min-width: 0;
+
+/* Solo la vista cartelle cede spazio in altezza: non ha controlli in cima,
+   quindi la banda dei semafori puo' restare vuota. La vista note ha invece
+   una banda propria alla stessa quota, con freccia e creazione (vedi
+   .note-list-topbar in NoteList), quindi qui non va aggiunto nulla — un
+   secondo rientro la spingerebbe sotto. */
+.sidebar-panel.folders-view:not(.is-drawer) {
+  padding-top: 48px;
 }
 
 .drawer-backdrop {

@@ -4,27 +4,44 @@
          sostituisce più, vive allo stesso livello della barra di
          ordinamento (vedi sort-row), così la vista non "salta" cambiando
          del tutto struttura quando si entra/esce dalla modalità. -->
+    <!-- Banda superiore, alla quota dei tre tasti finestra: freccia a
+         sinistra (dopo di loro) e creazione all'estrema destra. Il rientro
+         sinistro scavalca i semafori, che cadono qui sopra sia a pannello nel
+         flusso sia a pannello sovrapposto (parte comunque dall'angolo). -->
+    <div class="note-list-topbar">
+      <!-- Freccia indietro: porta il pannello alla vista cartelle. E' un solo
+           pannello con due viste, non due affiancati. -->
+      <button class="icon-btn back-btn" title="Cartelle" @click="ui.showFolders()">
+        <Icon icon="lucide:arrow-left" />
+      </button>
+
+      <!-- Ricerca su tutte le cartelle, accanto alla creazione: sono le due
+           azioni della banda, allineate a destra. Il suo pannello e'
+           teleportato su <body>, quindi non lo ritaglia il pannello
+           laterale. -->
+      <GlobalSearch ref="globalSearchRef" class="search-in-topbar" />
+
+      <button
+        v-if="!store.isTrashView"
+        class="icon-btn create-btn"
+        title="Nuova nota"
+        @click="store.createNote()"
+      >
+        <Icon icon="lucide:square-pen" />
+      </button>
+      <button
+        v-else
+        class="icon-btn danger create-btn"
+        title="Svuota cestino"
+        :disabled="store.trashCount === 0"
+        @click="confirmEmptyTrash"
+      >
+        <Icon icon="lucide:trash-2" />
+      </button>
+    </div>
+
     <div class="note-list-header">
       <h2>{{ store.currentViewName }}</h2>
-      <div class="header-actions">
-        <button
-          v-if="!store.isTrashView"
-          class="icon-btn"
-          title="Nuova nota"
-          @click="store.createNote()"
-        >
-          <Icon icon="lucide:square-pen" />
-        </button>
-        <button
-          v-else
-          class="icon-btn danger"
-          title="Svuota cestino"
-          :disabled="store.trashCount === 0"
-          @click="confirmEmptyTrash"
-        >
-          <Icon icon="lucide:trash-2" />
-        </button>
-      </div>
     </div>
 
     <!-- Due punti d'ingresso per la selezione multipla: questo bottone
@@ -189,11 +206,15 @@ import { useToast } from 'primevue/usetoast'
 import { Icon } from '@iconify/vue'
 import { useNotesStore } from '../stores/notes'
 import { useSettingsStore } from '../stores/settings'
+import { useUiStore } from '../stores/ui'
+import GlobalSearch from './GlobalSearch.vue'
 import { stripHtml, htmlToMarkdown } from '../utils/markdown'
 import { formatNoteDate, notePreview } from '../utils/noteDisplay'
 
 const store = useNotesStore()
 const settings = useSettingsStore()
+const ui = useUiStore()
+const globalSearchRef = ref(null)
 const confirm = useConfirm()
 const toast = useToast()
 
@@ -430,6 +451,9 @@ function confirmBulkDelete() {
 watch(() => store.selectedFolderId, exitSelectionMode)
 
 
+
+// Esposta ad App.vue per la voce di menu ⇧⌘F.
+defineExpose({ openSearch: () => globalSearchRef.value?.openSearch() })
 </script>
 
 <style scoped>
@@ -448,19 +472,45 @@ watch(() => store.selectedFolderId, exitSelectionMode)
   gap: 8px;
   padding: 10px 12px 8px;
 }
+/* Banda alla quota dei semafori: 48px come l'header della colonna di destra,
+   così i due allineamenti coincidono. Il rientro sinistro lascia passare i
+   tre tasti finestra. */
+.note-list-topbar {
+  display: flex;
+  align-items: center;
+  height: 48px;
+  flex-shrink: 0;
+  padding: 0 12px 0 74px;
+}
+/* La freccia non si restringe mai: e' l'unico modo di tornare alle
+   cartelle. */
+.back-btn {
+  flex-shrink: 0;
+}
+/* Ricerca e creazione formano il gruppo di destra: e' la ricerca a essere
+   spinta in fondo, e la creazione la segue. */
+.search-in-topbar {
+  margin-left: auto;
+}
+.create-btn {
+  flex-shrink: 0;
+}
+
+/* Non piu' flex: 1 — crescendo spingeva la ricerca fino al gruppo di destra.
+   Ora il titolo occupa il suo spazio, la ricerca gli sta accanto e le azioni
+   vengono spinte in fondo dal margin-left: auto. min-width: 0 con il
+   troncamento fa cedere il titolo invece di far uscire la ricerca. */
 .note-list-header h2 {
-  flex: 1;
+  flex: 0 1 auto;
+  min-width: 0;
   font-size: 18px;
   font-weight: 700;
   margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-/* Nessun no-drag: sono bottoni, e Tauri li esclude da sé dalle aree di
-   trascinamento (vedi data-tauri-drag-region sull'header). */
-.header-actions {
-  display: flex;
-  gap: 2px;
-}
 
 .selection-count {
   font-size: 13px;

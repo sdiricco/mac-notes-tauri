@@ -180,6 +180,21 @@
        componente (iniettato da Quill/noi in toolbarContainer, vedi
        openColorPicker), quindi non c'è un antenato comune su cui ancorare
        un position:absolute — Teleport + position:fixed calcolata al click. -->
+  <!-- Tooltip della toolbar come elemento unico teleportato e in
+       position:fixed, non come ::after sul controllo: la barra ora scorre in
+       orizzontale (overflow-x), e per la spec CSS l'altro asse non puo'
+       restare "visible" — qualunque pseudo-elemento sotto il bottone
+       verrebbe quindi ritagliato. Fuori dal contenitore il problema non
+       esiste. -->
+  <Teleport to="body">
+    <div
+      v-if="tooltip.visible"
+      class="toolbar-tip"
+      :style="{ top: tooltip.top, left: tooltip.left }"
+    >
+      {{ tooltip.text }}
+    </div>
+  </Teleport>
   <Teleport to="body">
     <div
       v-if="colorPickerOpen"
@@ -345,6 +360,49 @@ const G_HEADER = group(`
     <option selected></option>
   </select>
 `)
+
+// Annulla/Ripeti non esistono nella toolbar di Quill (nessuna classe ql-undo
+// riconosciuta e nessuna icona): il markup e' nostro e l'azione va
+// registrata in modules.toolbar.handlers. Icone nello stesso stile 18x18 a
+// tratto delle sue.
+// Glifi presi da lucide (undo-2/redo-2), lo stesso set usato dal resto
+// dell'app: quelli che avevo disegnato a mano erano sbilanciati nel riquadro
+// e non combaciavano con lo sfondo del bottone. class="ql-stroke" li fa
+// colorare dal CSS della toolbar come le icone native, e lo stroke-width 2
+// di lucide e' identico a quello che Quill usa per le sue.
+const UNDO_ICON = `
+  <svg viewBox="0 0 24 24">
+    <g class="ql-stroke" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="2">
+      <path d="M9 14L4 9l5-5"></path>
+      <path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11"></path>
+    </g>
+  </svg>
+`
+const REDO_ICON = `
+  <svg viewBox="0 0 24 24">
+    <g class="ql-stroke" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="2">
+      <path d="m15 14l5-5l-5-5"></path>
+      <path d="M20 9H9.5A5.5 5.5 0 0 0 4 14.5A5.5 5.5 0 0 0 9.5 20H13"></path>
+    </g>
+  </svg>
+`
+const G_HISTORY = group(
+  `<button class="ql-undo" type="button">${UNDO_ICON}</button>`,
+  `<button class="ql-redo" type="button">${REDO_ICON}</button>`
+)
+
+// Elenchi come tre bottoni e non come picker: la barra scorre in orizzontale
+// (vedi .floating-toolbar in NoteEditor), e ogni pannello a comparsa al suo
+// interno va riposizionato a mano per non essere ritagliato. Tre bottoni
+// piatti evitano il problema alla radice, e "tutto visibile" e' anche l'idea
+// di questa barra. Resta un solo picker, quello dei titoli.
+const G_LIST = group(
+  `<button class="ql-list" value="bullet" type="button"></button>`,
+  `<button class="ql-list" value="ordered" type="button"></button>`,
+  `<button class="ql-list" value="check" type="button"></button>`,
+  btn('ql-blockquote')
+)
+
 const G_INLINE = group(
   btn('ql-bold'),
   btn('ql-italic'),
@@ -352,47 +410,29 @@ const G_INLINE = group(
   btn('ql-strike'),
   btn('ql-code')
 )
-const G_BLOCK = group(
-  `
-  <select class="ql-list">
-    <option value="ordered"></option>
-    <option value="bullet"></option>
-    <option value="unchecked"></option>
-    <option selected></option>
-  </select>
-`,
-  btn('ql-link')
+
+// Quill riempie da se' l'icona dei bottoni con `value` (Toolbar.addControls
+// legge icons[formato][valore]), quindi qui non serve fornirla.
+const G_SCRIPT = group(
+  `<button class="ql-script" value="super" type="button"></button>`,
+  `<button class="ql-script" value="sub" type="button"></button>`
 )
-const G_INSERT = group(btn('ql-code-block'), btn('ql-image'), btn('ql-table'))
+const G_ALIGN = group(
+  `<button class="ql-align" value="" type="button"></button>`,
+  `<button class="ql-align" value="center" type="button"></button>`,
+  `<button class="ql-align" value="right" type="button"></button>`,
+  `<button class="ql-align" value="justify" type="button"></button>`
+)
+
+const G_INSERT = group(btn('ql-link'), btn('ql-code-block'), btn('ql-image'), btn('ql-table'))
 const G_CLEAN = group(btn('ql-clean'))
 
-// Mini-menu a comparsa iniettati nella toolbar (l'overflow "⋯" e, in modalità
-// compatta, il gruppo di stili inline sotto "Aa"): stesso markup generico
-// (.toolbar-dropdown/-toggle/-panel), la classe più specifica identifica quale
-// sia per lo stato/comportamento in onMounted. Il toggle non ha classi ql-*,
-// quindi il modulo Toolbar di Quill lo ignora (Toolbar.attach aggancia un
-// handler solo a elementi con una classe che inizia per "ql-").
-// "ql-formats" gli dà lo stesso divisorio verticale (margine/bordo) degli
-// altri gruppi: senza, il dropdown si fonde visivamente col gruppo
-// successivo, sembrando parte dello stesso insieme di controlli invece che
-// un gruppo a sé. Quill non attribuisce significato a questa classe (la
-// usa solo il CSS di questo file e quello di default per lo spacing), quindi
-// aggiungerla al wrapper è sicuro: non è un <button>/<select>, il modulo
-// Toolbar non ci aggancia nessun handler.
 const dropdown = (name, icon, tip, ...groups) => `
   <span class="ql-formats toolbar-dropdown ${name}">
     <button type="button" class="toolbar-dropdown-toggle ${name}-toggle" data-tooltip="${tip}" aria-label="${tip}">${icon}</button>
     <div class="toolbar-dropdown-panel ${name}-panel">${groups.join('')}</div>
   </span>
 `
-const OVERFLOW_ICON = `
-  <svg viewbox="0 0 18 18">
-    <circle class="ql-fill" cx="3" cy="9" r="1.4"></circle>
-    <circle class="ql-fill" cx="9" cy="9" r="1.4"></circle>
-    <circle class="ql-fill" cx="15" cy="9" r="1.4"></circle>
-  </svg>
-`
-const overflow = (...groups) => dropdown('toolbar-overflow', OVERFLOW_ICON, 'Altre opzioni', ...groups)
 
 // Bottoni custom al posto dei nativi <select class="ql-color">/"ql-background"
 // di Quill: quel widget (Quill lo ricostruisce a runtime in un ql-picker con
@@ -476,45 +516,13 @@ if (localStorage.getItem('ck-cp-reset-version') !== COLOR_PALETTE_RESET_VERSION)
 } else if (!hasUsableColorList()) {
   localStorage.setItem('ck-cp-local-color-list', JSON.stringify(DEFAULT_COLOR_PALETTE))
 }
-
-// Stesse doppie frecce su/giù che Quill disegna nei suoi ".ql-picker-label"
-// (titolo, lista): senza, "Aa" è testo puro e non comunica di essere un menu
-// a comparsa come gli altri picker qui accanto.
-const PICKER_CHEVRON = `
-  <svg viewBox="0 0 18 18">
-    <polygon class="ql-stroke" points="7 11 9 13 11 11 7 11"></polygon>
-    <polygon class="ql-stroke" points="7 7 9 5 11 7 7 7"></polygon>
-  </svg>
-`
-
-// Tutto ciò che riguarda la forma del testo in un solo menu: titoli e
-// paragrafo, i cinque stili inline e la citazione. "Aa" invece di un'icona
-// disegnata: è la convenzione già usata da più editor per un menu di stili,
-// leggibile senza dover indovinare cosa rappresenti un glifo.
-// Il picker dei titoli finisce annidato in questo pannello, che non ha
-// overflow dichiarato: le sue opzioni (position:absolute) non vengono quindi
-// ritagliate.
-const styleDropdown = () =>
-  dropdown(
-    'style-dropdown',
-    `<span class="style-dropdown-label">Aa</span>${PICKER_CHEVRON}`,
-    // Solo l'etichetta: i singoli bottoni dentro il pannello hanno gia' il
-    // proprio tooltip con la scorciatoia (vedi TOOLBAR_TOOLTIPS).
-    'Stile del testo',
-    G_HEADER,
-    G_INLINE,
-    group(btn('ql-blockquote'))
-  )
-
 const G_COLOR = colorDropdown() + highlightDropdown()
 
-// Un solo layout, con tutti i controlli visibili. Non c'e' piu' una scelta
-// manuale compatta/estesa: la compattezza dipende ora solo dallo spazio
-// disponibile — i gruppi migrano nel pannello "⋯" quando non ci stanno e
-// tornano al loro posto quando c'e' spazio (vedi setupResponsiveToolbar).
-// L'overflow parte vuoto ed e' proprio il contenitore che li riceve: senza,
-// a larghezza ridotta non ci sarebbe dove metterli.
-const TOOLBAR_HTML = styleDropdown() + G_COLOR + G_BLOCK + G_INSERT + G_CLEAN + overflow()
+// Barra piatta: ogni controllo visibile, gruppi separati dal bordo di
+// .ql-formats. Niente menu condensato e niente overflow "⋯": a larghezza
+// insufficiente la barra scorre in orizzontale.
+const TOOLBAR_HTML =
+  G_HISTORY + G_HEADER + G_LIST + G_INLINE + G_COLOR + G_SCRIPT + G_ALIGN + G_INSERT + G_CLEAN
 
 // Tooltip di ogni controllo, con la relativa scorciatoia. Applicati dopo
 // l'init di Quill (vedi applyToolbarTooltips) invece che come attributi title
@@ -525,35 +533,73 @@ const TOOLBAR_HTML = styleDropdown() + G_COLOR + G_BLOCK + G_INSERT + G_CLEAN + 
 // scorciatoie dei titoli, i tre tipi di elenco, il tasto destro sulle celle
 // della tabella) rendevano il tooltip piu' largo del pannello, e vengono
 // comunque scoperte usando il controllo.
-const TOOLBAR_TOOLTIPS = {
-  'ql-header': 'Titolo',
-  'ql-bold': `Grassetto (${shortcut('mod+B')})`,
-  'ql-italic': `Corsivo (${shortcut('mod+I')})`,
-  'ql-underline': `Sottolineato (${shortcut('mod+U')})`,
-  'ql-strike': `Barrato (${shortcut('mod+shift+X')})`,
-  'ql-code': `Codice (${shortcut('mod+E')})`,
-  'ql-list': 'Elenco',
-  'ql-blockquote': `Citazione (${shortcut('mod+shift+B')})`,
-  'ql-link': `Link (${shortcut('mod+K')})`,
-  'ql-code-block': `Blocco codice (${shortcut('mod+shift+C')})`,
-  'ql-image': 'Immagine',
-  'ql-table': 'Tabella',
-  'ql-clean': 'Rimuovi formato'
+// Coppie [selettore, etichetta]. Un array di selettori e non una mappa
+// classe -> testo: piu' bottoni condividono la stessa classe distinguendosi
+// per `value` (tre elenchi, quattro allineamenti, due script), e con una
+// sola chiave per classe ne avrebbe avuto il tooltip solo il primo.
+// Testi brevi per scelta: nome del controllo piu' la scorciatoia, niente
+// spiegazioni — sono etichette, non documentazione.
+const TOOLBAR_TOOLTIPS = [
+  ['button.ql-undo', `Annulla (${shortcut('mod+Z')})`],
+  ['button.ql-redo', `Ripeti (${shortcut('mod+shift+Z')})`],
+  ['.ql-header .ql-picker-label', 'Titolo'],
+  ['button.ql-list[value="bullet"]', `Elenco puntato (${shortcut('mod+shift+8')})`],
+  ['button.ql-list[value="ordered"]', `Elenco numerato (${shortcut('mod+shift+7')})`],
+  ['button.ql-list[value="check"]', `Elenco di controllo (${shortcut('mod+shift+9')})`],
+  ['button.ql-blockquote', `Citazione (${shortcut('mod+shift+B')})`],
+  ['button.ql-bold', `Grassetto (${shortcut('mod+B')})`],
+  ['button.ql-italic', `Corsivo (${shortcut('mod+I')})`],
+  ['button.ql-underline', `Sottolineato (${shortcut('mod+U')})`],
+  ['button.ql-strike', `Barrato (${shortcut('mod+shift+X')})`],
+  ['button.ql-code', `Codice (${shortcut('mod+E')})`],
+  ['button.ql-script[value="super"]', 'Apice'],
+  ['button.ql-script[value="sub"]', 'Pedice'],
+  ['button.ql-align[value=""]', 'Allinea a sinistra'],
+  ['button.ql-align[value="center"]', 'Centra'],
+  ['button.ql-align[value="right"]', 'Allinea a destra'],
+  ['button.ql-align[value="justify"]', 'Giustifica'],
+  ['button.ql-link', `Link (${shortcut('mod+K')})`],
+  ['button.ql-code-block', `Blocco codice (${shortcut('mod+shift+C')})`],
+  ['button.ql-image', 'Immagine'],
+  ['button.ql-table', 'Tabella'],
+  ['button.ql-clean', 'Rimuovi formato']
+]
+
+const tooltip = reactive({ visible: false, text: '', top: '0px', left: '0px' })
+
+// Delegato sul contenitore invece di un listener per bottone: i controlli li
+// crea Quill, e alcuni li spostiamo/ricreiamo.
+function showTooltip(el) {
+  const tip = el.getAttribute('data-tooltip')
+  if (!tip) return
+  const rect = el.getBoundingClientRect()
+  tooltip.text = tip
+  tooltip.top = `${Math.round(rect.bottom + 6)}px`
+  // Allineato al bordo sinistro del controllo, ma rientrato se sborderebbe:
+  // sull'ultimo controllo di una barra che scorre il bordo destro e' vicino.
+  const width = 220 // stima larga: serve solo a non uscire dalla finestra
+  const left = Math.min(rect.left, window.innerWidth - width - 8)
+  tooltip.left = `${Math.round(Math.max(8, left))}px`
+  tooltip.visible = true
 }
 
-// data-tooltip/aria-label invece di title: stesso motivo del pannello
-// colore/evidenziazione (vedi dropdown() più sotto) — il tooltip nativo del
-// browser è lento/inconsistente in WKWebView, quindi lo ricostruiamo in CSS
-// (vedi .floating-toolbar :deep([data-tooltip]) in NoteEditor.vue) per tutti
-// i controlli della toolbar, non solo per i due dropdown custom.
+function hideTooltip() {
+  tooltip.visible = false
+}
+
+function onToolbarPointerOver(event) {
+  const el = event.target.closest?.('[data-tooltip]')
+  if (el) showTooltip(el)
+  else hideTooltip()
+}
+
 function applyToolbarTooltips(container) {
   if (!container) return
-  Object.entries(TOOLBAR_TOOLTIPS).forEach(([cls, tip]) => {
-    const target = container.querySelector(`button.${cls}`) || container.querySelector(`.${cls} .ql-picker-label`)
-    if (target) {
-      target.setAttribute('data-tooltip', tip)
-      target.setAttribute('aria-label', tip)
-    }
+  TOOLBAR_TOOLTIPS.forEach(([selector, tip]) => {
+    container.querySelectorAll(selector).forEach((el) => {
+      el.setAttribute('data-tooltip', tip)
+      el.setAttribute('aria-label', tip)
+    })
   })
 }
 
@@ -963,137 +1009,6 @@ function openLinkPromptForRange(range) {
   }
 }
 
-// --- Toolbar responsive --------------------------------------------------
-// Restringendo la finestra i gruppi in coda migrano nel pannello "⋯" invece
-// di eccedere dalla riga (che e' cio' che facevano prima: .floating-toolbar
-// ha min-width:0 e si restringe, e non puo' avere overflow-x perche'
-// ritaglierebbe i pannelli a comparsa -- vedi il suo CSS in NoteEditor).
-//
-// Si spostano i NODI DOM invece di ricostruire il markup: i listener del
-// modulo Toolbar sono agganciati agli elementi e sopravvivono al
-// re-parenting (verificato: dopo lo spostamento il controllo formatta ancora
-// e Quill gli aggiorna .ql-active). Ricostruire il markup richiederebbe
-// invece un remount dell'editor, perche' la toolbar Quill la costruisce una
-// sola volta all'init -- e si perderebbero cursore e scroll a ogni resize.
-//
-// Migrano tutti i gruppi tranne due: l'overflow stesso e il menu "Aa".
-// I dropdown di colore ed evidenziazione invece migrano — e' la
-// configurazione con cui girava la vecchia modalita' compatta
-// (overflow(G_COLOR, ...)) — perche' i loro toggle chiamano openColorPicker
-// direttamente invece di toggleDropdown, il click al loro interno resta
-// dentro l'overflow quindi onGlobalMousedown non lo chiude, e il picker vero
-// e' teleportato su <body>, dove nessun pannello puo' ritagliarlo.
-// "Aa" no: il suo toggle passa da toggleDropdown, che chiude tutti i
-// dropdown prima di aprire quello cliccato — annidato nel pannello "⋯" si
-// chiuderebbe da se' proprio al click che lo apre. Resta quindi sempre in
-// barra, ed e' anche il controllo che ha piu' senso tenere raggiungibile.
-// I due irriducibili sono compatti (un "Aa" e tre puntini), quindi la
-// toolbar rientra comunque senza bisogno di uno scroll orizzontale — che tra
-// l'altro ritaglierebbe i menu a discesa (vedi il commento su
-// .floating-toolbar in NoteEditor.vue).
-let toolbarResizeObserver = null
-let toolbarFitting = false
-
-function setupResponsiveToolbar(container, overflowEl) {
-  const panel = overflowEl?.querySelector('.toolbar-dropdown-panel')
-  if (!container || !panel) return
-
-  // Ordine iniziale di tutti i gruppi: serve per rimettere un gruppo al suo
-  // posto, non semplicemente in coda.
-  const originalOrder = [...container.children]
-  const collapsible = originalOrder.filter(
-    (el) =>
-      el.classList.contains('ql-formats') &&
-      el !== overflowEl &&
-      !el.classList.contains('style-dropdown')
-  )
-  const collapsed = [] // in ordine di collasso: dall'ultimo gruppo verso i primi
-
-  const exceeds = () => container.scrollWidth > container.clientWidth + 1
-  // Spazio a disposizione: la larghezza del padre, non della toolbar. Quella
-  // della toolbar coincide col contenuto quando ci sta, quindi non dice
-  // nulla su quanto spazio ci sia (vedi il commento sull'observer sotto).
-  const availableWidth = () =>
-    container.parentElement?.clientWidth ?? container.clientWidth
-
-  // Larghezza a cui l'ultimo tentativo di riespansione e' fallito. Senza
-  // questa soglia, con un gruppo di larghezza appena al limite ogni giro
-  // rifarebbe restore + collapse: due mutazioni del DOM che risvegliano
-  // l'observer, che richiama fitToolbar, in un ciclo infinito con la CPU
-  // fissa. Si ritenta solo quando lo spazio e' davvero aumentato.
-  let restoreBlockedAt = -Infinity
-
-  function collapse(group) {
-    // In testa al pannello: collassando dalla coda verso l'inizio, il
-    // prepend ricostruisce l'ordine originale dentro il pannello.
-    panel.insertBefore(group, panel.firstChild)
-    collapsed.push(group)
-  }
-
-  function restore(group) {
-    const idx = originalOrder.indexOf(group)
-    const anchor = originalOrder
-      .slice(idx + 1)
-      .find((el) => el.parentElement === container)
-    container.insertBefore(group, anchor || null)
-    collapsed.pop()
-  }
-
-  function fitToolbar() {
-    if (toolbarFitting) return
-    toolbarFitting = true
-    try {
-      let guard = 0
-      let didCollapse = false
-      while (exceeds() && guard++ < 20) {
-        const next = collapsible.filter((el) => el.parentElement === container).pop()
-        if (!next) break
-        collapse(next)
-        didCollapse = true
-      }
-      // Se si e' dovuto collassare, a questa larghezza la configurazione
-      // precedente non ci stava: riprovare a riespandere prima che lo spazio
-      // aumenti e' inutile.
-      if (didCollapse) restoreBlockedAt = availableWidth()
-
-      // Lo spazio libero non e' misurabile (a toolbar che ci sta,
-      // scrollWidth combacia con clientWidth): si rimette l'ultimo gruppo
-      // collassato e si annulla se torna a eccedere.
-      if (availableWidth() > restoreBlockedAt) {
-        while (collapsed.length && guard++ < 40) {
-          const candidate = collapsed[collapsed.length - 1]
-          restore(candidate)
-          if (exceeds()) {
-            collapse(candidate)
-            restoreBlockedAt = availableWidth()
-            break
-          }
-          restoreBlockedAt = -Infinity
-        }
-      }
-      // display invece dell'attributo hidden: .toolbar-dropdown ha un
-      // display esplicito nel CSS, che vincerebbe su [hidden].
-      overflowEl.style.display = panel.children.length ? '' : 'none'
-    } finally {
-      toolbarFitting = false
-    }
-  }
-
-  fitToolbar()
-  toolbarResizeObserver = new ResizeObserver(() => fitToolbar())
-  // Si osserva il CONTENITORE PADRE (l'header), non solo la toolbar: essendo
-  // un flex item dimensionato sul contenuto e senza flex-grow, la toolbar non
-  // si ridimensiona quando lo spazio AUMENTA (misurato: header da 400 a
-  // 900px, clientWidth della toolbar invariata a 64). Osservando solo lei, il
-  // collasso funzionava e la riespansione no.
-  // La toolbar si osserva comunque: la sua larghezza cambia anche a header
-  // invariato, quando un fratello cambia dimensione — per esempio la pillola
-  // delle azioni che perde o riacquista i pulsanti (vedi compactActions in
-  // NoteEditor).
-  if (container.parentElement) toolbarResizeObserver.observe(container.parentElement)
-  toolbarResizeObserver.observe(container)
-}
-
 // Cerca nella nota (Cmd+F): ricerca case-insensitive su tutto il testo
 // semplice, evidenziata con i due formati registrati sopra.
 const findInputEl = ref(null)
@@ -1335,14 +1250,6 @@ async function runContextAction(value) {
   }
 }
 
-// Mini-menu della toolbar di formattazione (overflow "⋯" e, in compatta, lo
-// stile testo sotto "Aa" — vedi TOOLBAR_HTML): apertura/chiusura gestite a
-// mano perché quel markup vive fuori dal template Vue (iniettato
-// imperativamente da Quill nel contenitore esterno). Un array invece di due
-// variabili perché il numero di dropdown presenti dipende dalla modalità
-// (in estesa non ce n'è nessuno).
-let toolbarDropdownEls = []
-
 // Vue3ColorPicker è un componente Vue vero, quindi vive nel <template> (vedi
 // in fondo) invece che nell'HTML imperativo del resto della toolbar. Aperto
 // come overlay posizionato sopra il bottone che lo ha invocato — position
@@ -1354,11 +1261,10 @@ const colorPickerOpen = ref(false)
 const highlightPickerOpen = ref(false)
 const colorPickerPos = ref({ top: '0px', left: '0px' })
 
-// I due picker non passano da toggleDropdown (aprono un overlay Vue), quindi
-// il loro stato va osservato per tenere aggiornata la classe che sopprime i
-// tooltip. syncOpenDropdownClass è una function declaration, quindi è già
-// definita quando il watcher scatta.
-watch([colorPickerOpen, highlightPickerOpen], () => syncOpenDropdownClass())
+// Aprendo un picker il mouse resta sul suo bottone: senza questo il tooltip
+// resterebbe visibile sopra il picker appena comparso. hideTooltip è una
+// function declaration, quindi è già definita quando il watcher scatta.
+watch([colorPickerOpen, highlightPickerOpen], () => hideTooltip())
 const colorPickerValue = ref('#000000')
 const highlightPickerValue = ref('#ffff00')
 const colorPickerEl = ref(null)
@@ -1391,38 +1297,6 @@ function onColorPicked(format, value) {
   quill.format(format, value)
 }
 
-// Marca sulla toolbar la presenza di un pannello aperto, così il CSS può
-// sopprimere i tooltip: dopo il click il mouse resta sul toggle e :hover
-// continuerebbe a mostrarne uno sopra il pannello appena aperto (il tooltip
-// sta a z-index 30, il pannello a 20). Vale per tutti i controlli, non solo
-// per il toggle: anche il tooltip di un bottone vicino cadrebbe sul
-// pannello, che si apre proprio sotto la barra.
-// Una classe in JS e non un :has() in CSS: :has() non esiste su macOS Big
-// Sur, che è la versione minima dichiarata dell'app.
-function syncOpenDropdownClass() {
-  // Anche il picker di colore/evidenziazione conta: non usa la classe
-  // is-open (apre un overlay teleportato su <body>), ma il tooltip del suo
-  // toggle cadrebbe comunque sopra il picker.
-  const anyOpen =
-    colorPickerOpen.value ||
-    highlightPickerOpen.value ||
-    toolbarDropdownEls.some((d) => d.classList.contains('is-open'))
-  props.toolbarContainer?.classList.toggle('has-open-dropdown', anyOpen)
-}
-
-function closeDropdown(el) {
-  el.classList.remove('is-open')
-  syncOpenDropdownClass()
-}
-
-function toggleDropdown(el, event) {
-  event.stopPropagation()
-  const wasOpen = el.classList.contains('is-open')
-  toolbarDropdownEls.forEach((d) => d.classList.remove('is-open'))
-  if (!wasOpen) el.classList.add('is-open')
-  syncOpenDropdownClass()
-}
-
 function onGlobalMousedown(event) {
   if (tableMenu.visible && !tableMenuEl.value?.contains(event.target)) {
     closeTableMenu()
@@ -1430,10 +1304,6 @@ function onGlobalMousedown(event) {
   if (contextMenu.visible && !contextMenuEl.value?.contains(event.target)) {
     closeContextMenu()
   }
-  toolbarDropdownEls.forEach((el) => {
-    if (el.classList.contains('is-open') && !el.contains(event.target)) el.classList.remove('is-open')
-  })
-  syncOpenDropdownClass()
   // Il picker colore è un Teleport verso <body>: non è mai dentro
   // toolbarContainer, quindi non lo tocca il forEach sopra. Il click sul
   // bottone che lo apre non deve richiuderlo nello stesso giro (altrimenti
@@ -1491,7 +1361,19 @@ onMounted(async () => {
     modules: {
       toolbar: {
         container: toolbarContainer,
-        handlers: { table: insertTable, link: toolbarLink, image: toolbarImage }
+        // undo/redo non sono formati: il modulo Toolbar chiama l'handler
+        // omonimo, che delega al modulo history di Quill.
+        handlers: {
+          table: insertTable,
+          link: toolbarLink,
+          image: toolbarImage,
+          undo() {
+            this.quill.history.undo()
+          },
+          redo() {
+            this.quill.history.redo()
+          }
+        }
       },
       table: true,
       syntax: { hljs, languages: CODE_LANGUAGES },
@@ -1504,45 +1386,6 @@ onMounted(async () => {
   const inlineCodeButton = quill.getModule('toolbar').container.querySelector('button.ql-code')
   if (inlineCodeButton) inlineCodeButton.innerHTML = INLINE_CODE_ICON
 
-  // In modalità estesa non c'è nessun dropdown: i query restano null e i
-  // listener semplicemente non vengono agganciati.
-  toolbarDropdownEls = []
-  const overflowEl = props.toolbarContainer?.querySelector('.toolbar-overflow') || null
-  if (overflowEl) {
-    toolbarDropdownEls.push(overflowEl)
-    overflowEl
-      .querySelector('.toolbar-overflow-toggle')
-      ?.addEventListener('click', (event) => toggleDropdown(overflowEl, event))
-    // Chiude il pannello subito dopo un'azione diretta (bottone o voce colore
-    // scelta), non dopo l'apertura di un picker (che richiede un secondo click).
-    overflowEl.addEventListener('click', (event) => {
-      const actedImmediately = event.target.closest(
-        'button.ql-code-block, button.ql-image, button.ql-table, button.ql-clean, .ql-picker-item'
-      )
-      if (actedImmediately) requestAnimationFrame(() => closeDropdown(overflowEl))
-    })
-  }
-
-  const styleEl = props.toolbarContainer?.querySelector('.style-dropdown') || null
-  let styleToggleEl = null
-  if (styleEl) {
-    toolbarDropdownEls.push(styleEl)
-    styleToggleEl = styleEl.querySelector('.style-dropdown-toggle')
-    styleToggleEl?.addEventListener('click', (event) => toggleDropdown(styleEl, event))
-    // Si chiude dopo un'azione conclusa, non dopo l'apertura del picker dei
-    // titoli, che richiede un secondo click per scegliere la voce.
-    styleEl.addEventListener('click', (event) => {
-      const done = event.target.closest(
-        'button.ql-bold, button.ql-italic, button.ql-underline, button.ql-strike,' +
-          ' button.ql-code, button.ql-blockquote, .ql-picker-item'
-      )
-      if (done) requestAnimationFrame(() => closeDropdown(styleEl))
-    })
-  }
-
-  // Dopo che i listener di Quill sono agganciati: da qui in avanti spostare
-  // i gruppi e' sicuro.
-  setupResponsiveToolbar(props.toolbarContainer, overflowEl)
   // Bottoni colore/evidenziazione (vedi colorDropdown/highlightDropdown sopra):
   // niente <select>, quindi il modulo Toolbar di Quill non li vede — il
   // formato va applicato a mano allo swatch cliccato.
@@ -1579,18 +1422,45 @@ onMounted(async () => {
   }
 
 
-  // Raccogliendo gli stili sotto "Aa" si perde il segnale che Quill da' da
-  // solo ai bottoni ql-* (classe ql-active secondo il formato sotto il
-  // cursore): al nostro toggle custom non lo applica, quindi va sincronizzato
-  // a mano a ogni cambio di selezione o testo.
-  const STYLE_FORMATS = ['bold', 'italic', 'underline', 'strike', 'code', 'blockquote', 'header']
-  function syncStyleToggleActive() {
-    if (!styleToggleEl) return
-    const range = quill.getSelection()
-    const format = range ? quill.getFormat(range) : {}
-    styleToggleEl.classList.toggle('is-active', STYLE_FORMATS.some((f) => format[f]))
+  // Tooltip: delega sul contenitore, e si nasconde appena il mouse esce o
+  // si clicca (un pannello appena aperto non deve trovarselo sopra).
+  const tipHost = props.toolbarContainer
+  if (tipHost) {
+    tipHost.addEventListener('mouseover', onToolbarPointerOver)
+    tipHost.addEventListener('mouseleave', hideTooltip)
+    tipHost.addEventListener('mousedown', hideTooltip)
+    tipHost.addEventListener('scroll', hideTooltip)
   }
-  quill.on('editor-change', syncStyleToggleActive)
+
+  // Le opzioni del picker dei titoli sono in position:absolute dentro la
+  // barra, che ora scorre: verrebbero ritagliate. Al click sull'etichetta si
+  // riposizionano in coordinate di finestra (fixed), fuori da quel
+  // contenitore. Si chiude allo scroll invece di seguirlo: inseguire la
+  // posizione a ogni frame non vale la complessita' per un menu di quattro
+  // voci.
+  const headerPicker = props.toolbarContainer?.querySelector('.ql-header')
+  if (headerPicker) {
+    const label = headerPicker.querySelector('.ql-picker-label')
+    const options = headerPicker.querySelector('.ql-picker-options')
+    // mousedown e non click: e' l'evento su cui Quill apre il picker, quindi
+    // al frame successivo la classe ql-expanded c'e' gia'.
+    label?.addEventListener('mousedown', () => {
+      if (!options) return
+      // setTimeout(0) e non requestAnimationFrame: basta uscire dal task
+      // corrente (quello in cui Quill ha appena espanso il picker), e non
+      // dipende dalla produzione di un frame.
+      setTimeout(() => {
+        if (!headerPicker.classList.contains('ql-expanded')) return
+        const rect = label.getBoundingClientRect()
+        options.style.position = 'fixed'
+        options.style.top = `${Math.round(rect.bottom + 4)}px`
+        options.style.left = `${Math.round(rect.left)}px`
+      })
+    })
+    props.toolbarContainer?.addEventListener('scroll', () => {
+      headerPicker.classList.remove('ql-expanded')
+    })
+  }
 
   applyToolbarTooltips(quill.getModule('toolbar').container)
 
@@ -1641,17 +1511,41 @@ defineExpose({ focusEditor, toggleFindBar })
 
 onBeforeUnmount(() => {
   window.removeEventListener('mousedown', onGlobalMousedown)
-  // L'observer punta a un elemento del genitore (toolbarContainer), che
-  // sopravvive a questo componente: senza disconnetterlo resterebbe attivo a
-  // richiamare una closure su un'istanza smontata a ogni remount (il
-  // genitore ne forza uno a ogni cambio di nota).
-  toolbarResizeObserver?.disconnect()
-  toolbarResizeObserver = null
+  const tipHost = props.toolbarContainer
+  if (tipHost) {
+    tipHost.removeEventListener('mouseover', onToolbarPointerOver)
+    tipHost.removeEventListener('mouseleave', hideTooltip)
+    tipHost.removeEventListener('mousedown', hideTooltip)
+    tipHost.removeEventListener('scroll', hideTooltip)
+  }
+  hideTooltip()
   quill = null
 })
 </script>
 
 <style scoped>
+/* Tooltip della toolbar: elemento unico teleportato su <body>, quindi non
+   scoped -> :global. In position:fixed con coordinate calcolate al passaggio
+   del mouse, perche' la barra scorre e un pseudo-elemento al suo interno
+   verrebbe ritagliato (vedi .floating-toolbar in NoteEditor). */
+:global(.toolbar-tip) {
+  position: fixed;
+  z-index: 3000;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: var(--editor-toolbar-bg);
+  border: 1px solid var(--p-content-border-color);
+  color: var(--p-text-color);
+  font-size: 11px;
+  /* Peso e stile dichiarati: non erediti nulla dal controllo che lo ha
+     evocato (il picker dei titoli, per esempio, e' in grassetto). */
+  font-weight: 400;
+  font-style: normal;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+  pointer-events: none;
+}
+
 .quill-editor {
   position: relative;
   display: flex;

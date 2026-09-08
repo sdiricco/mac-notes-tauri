@@ -296,7 +296,7 @@ onBeforeUnmount(() => {
   position: absolute;
   top: 0;
   left: 0;
-  height: 48px;
+  height: 40px;
   z-index: 10;
 }
 
@@ -320,21 +320,6 @@ onBeforeUnmount(() => {
   background: var(--sidebar-bg);
 }
 
-/* Spazio per i semafori, che cadono sul pannello piu' a sinistra e non
-   sull'header. Le cartelle cedono spazio in ALTEZZA: la loro prima voce
-   inizia sotto la banda dei semafori. */
-.browse:not(.is-drawer) > .sidebar-panel {
-  padding-top: 48px;
-}
-
-/* La lista invece cede spazio in LARGHEZZA quando diventa il pannello piu' a
-   sinistra: un rientro dall'alto la faceva "affondare", con una banda vuota
-   sopra il titolo. Cosi' resta in cima e il titolo comincia dopo i semafori.
-   E' lo stesso accorgimento (.note-list-header.inset) che il codice usava
-   prima del layout a colonna piena. */
-.browse:not(.is-drawer).folders-hidden .note-list-header {
-  padding-left: 74px;
-}
 
 /* Sovrapposto (finestra stretta): fuori dal flusso, quindi l'editor si
    prende tutta la larghezza come se il pannello non esistesse. Da cima a
@@ -362,17 +347,8 @@ onBeforeUnmount(() => {
   top: 0;
   left: 0;
   width: 74px;
-  height: 48px;
+  height: 40px;
   z-index: 10;
-}
-
-/* Solo la vista cartelle cede spazio in altezza: non ha controlli in cima,
-   quindi la banda dei semafori puo' restare vuota. La vista note ha invece
-   una banda propria alla stessa quota, con freccia e creazione (vedi
-   .note-list-topbar in NoteList), quindi qui non va aggiunto nulla — un
-   secondo rientro la spingerebbe sotto. */
-.sidebar-panel.folders-view:not(.is-drawer) {
-  padding-top: 48px;
 }
 
 .drawer-backdrop {

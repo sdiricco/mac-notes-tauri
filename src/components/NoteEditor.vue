@@ -6,19 +6,26 @@
     </div>
 
     <template v-else>
-      <div ref="editorHeaderEl" class="editor-header">
+      <div class="editor-header">
         <!-- Toolbar di formattazione di Quill: montata qui (contenitore esterno,
              vedi toolbar-container su QuillEditor) per stare sopra ai pulsanti
              azione invece che nella posizione di default. -->
         <div ref="quillToolbarEl" class="floating-toolbar"></div>
 
-        <!-- Cerca, preferiti e cestino: visibili qui a header largo, mentre le
-             azioni poco usate stanno sempre nel menu "⋮" invece di affollare
-             la pillola. A header stretto (compactActions) anche questi tre
-             migrano nel menu, così la toolbar di formattazione si tiene lo
-             spazio invece di spartirlo. -->
+        <!-- Cerca, preferiti e cestino sempre visibili; le azioni poco usate
+             stanno nel menu "⋮". Non c'e' piu' una soglia che li faccia
+             migrare nel menu: stando nell'header principale, che tronca il
+             breadcrumb per far posto, lo spazio non gli manca mai. -->
+        <!-- Teleportate nell'header principale (#header-note-actions in
+             AppHeader): markup e logica restano qui — dialogo Markdown,
+             riferimento all'editor per la ricerca nella nota, ortografia — e
+             cambia solo dove finiscono nel DOM.
+             `defer` e' indispensabile: il bersaglio e' reso nello stesso
+             albero, e senza di esso Teleport lo cerca prima che esista,
+             fallendo con "emitsOptions null" e impedendo il montaggio di
+             QuillEditor (toolbar vuota). Disponibile da Vue 3.5. -->
+        <Teleport defer to="#header-note-actions">
         <div class="action-card">
-          <template v-if="!compactActions">
             <button class="icon-btn" title="Cerca nella nota (⌘F)" @click="quillEditorRef?.toggleFindBar()">
               <Icon icon="lucide:search" />
             </button>
@@ -40,32 +47,12 @@
             <button v-else class="icon-btn" title="Ripristina" @click="store.restoreNote(store.selectedNote.id)">
               <Icon icon="lucide:rotate-ccw" />
             </button>
-          </template>
 
           <div ref="actionOverflowEl" class="action-overflow">
             <button class="icon-btn" title="Altre azioni" @click="actionMenuOpen = !actionMenuOpen">
-              <Icon icon="lucide:more-vertical" />
+              <Icon icon="lucide:ellipsis" />
             </button>
             <div v-if="actionMenuOpen" class="action-overflow-menu">
-              <template v-if="compactActions">
-                <button @click="quillEditorRef?.toggleFindBar(); actionMenuOpen = false">
-                  <Icon icon="lucide:search" />
-                  <span>Cerca nella nota</span>
-                </button>
-                <button @click="store.togglePin(store.selectedNote.id); actionMenuOpen = false">
-                  <Icon icon="lucide:star" :class="{ filled: store.selectedNote.pinned }" />
-                  <span>{{ store.selectedNote.pinned ? 'Rimuovi dai preferiti' : 'Aggiungi ai preferiti' }}</span>
-                </button>
-                <button v-if="!store.selectedNote.trashed" @click="confirmTrash(); actionMenuOpen = false">
-                  <Icon icon="lucide:trash-2" />
-                  <span>Sposta nel cestino</span>
-                </button>
-                <button v-else @click="store.restoreNote(store.selectedNote.id); actionMenuOpen = false">
-                  <Icon icon="lucide:rotate-ccw" />
-                  <span>Ripristina</span>
-                </button>
-                <div class="action-overflow-sep"></div>
-              </template>
               <button @click="importNote(); actionMenuOpen = false">
                 <Icon icon="lucide:upload" />
                 <span>Importa Markdown</span>
@@ -85,6 +72,7 @@
             </div>
           </div>
         </div>
+        </Teleport>
       </div>
 
       <QuillEditor
@@ -122,7 +110,7 @@
 </template>
 
 <script setup>
-import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { onBeforeUnmount, onMounted, ref } from 'vue'
 import Dialog from 'primevue/dialog'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
@@ -154,16 +142,6 @@ const markdownPreviewText = ref('')
 const actionMenuOpen = ref(false)
 const actionOverflowEl = ref(null)
 
-// Si osserva la larghezza dell'HEADER, non della finestra: l'editor si
-// restringe anche trascinando i divisori dei pannelli, a finestra invariata.
-// Soglia sotto la quale i tre pulsanti migrano nel menu "⋮"; l'editor non
-// scende sotto 380px (vedi EDITOR_MIN in App.vue), quindi 470 lascia una
-// fascia utile di stati compatti.
-const ACTIONS_COMPACT_BELOW = 470
-const editorHeaderEl = ref(null)
-const compactActions = ref(false)
-let headerResizeObserver = null
-
 function onGlobalMousedown(event) {
   if (actionMenuOpen.value && actionOverflowEl.value && !actionOverflowEl.value.contains(event.target)) {
     actionMenuOpen.value = false
@@ -177,26 +155,6 @@ let offFindInNote = null
 onMounted(() => {
   window.addEventListener('mousedown', onGlobalMousedown)
   offFindInNote = api.onMenu('menu:find-in-note', () => quillEditorRef.value?.toggleFindBar())
-})
-
-// L'header sta dentro il ramo "nota selezionata": al mount il ref puo' essere
-// ancora null (nessuna nota aperta) e l'observer non si aggancerebbe mai.
-// Osservando il ref si aggancia quando l'elemento compare, e si stacca
-// quando sparisce.
-watch(editorHeaderEl, (el) => {
-  headerResizeObserver?.disconnect()
-  headerResizeObserver = null
-  if (!el) return
-  headerResizeObserver = new ResizeObserver(([entry]) => {
-    compactActions.value = entry.contentRect.width < ACTIONS_COMPACT_BELOW
-  })
-  headerResizeObserver.observe(el)
-}, { immediate: true })
-onBeforeUnmount(() => {
-  window.removeEventListener('mousedown', onGlobalMousedown)
-  offFindInNote?.()
-  headerResizeObserver?.disconnect()
-  headerResizeObserver = null
 })
 
 function openMarkdownPreview() {
@@ -280,12 +238,17 @@ async function copyNote() {
   top: 0;
   z-index: 2;
   display: flex;
-  justify-content: space-between;
+  /* Centrata: da quando le azioni sono teleportate nell'header principale,
+     qui resta solo la toolbar, e allinearla a sinistra la lasciava
+     squilibrata. */
+  justify-content: center;
   align-items: center;
   gap: 6px;
   padding: 12px 16px;
-  background: transparent;
-  border-bottom: 1px solid var(--p-content-border-color);
+  /* Sfondo pieno, uguale a quello dell'editor: l'header e' position: sticky,
+     quindi con background trasparente il testo che scorre gli passava dietro
+     e si sovrapponeva alla toolbar. */
+  background: var(--editor-bg);
 }
 
 .action-card {
@@ -315,15 +278,6 @@ async function copyNote() {
   flex-direction: column;
   gap: 1px;
 }
-/* Separa le azioni migrate dall'header (cerca/preferiti/cestino) da quelle
-   che vivono sempre nel menu: senza, a header stretto sembrerebbero un unico
-   elenco indistinto. */
-.action-overflow-sep {
-  height: 1px;
-  margin: 4px 6px;
-  background: var(--p-content-border-color);
-}
-
 .action-overflow-menu button {
   display: flex;
   align-items: center;
@@ -447,10 +401,15 @@ async function copyNote() {
 }
 
 .floating-toolbar {
-  /* Prende lo spazio che resta dopo la pillola azioni e ci scorre dentro.
-     min-width: 0 e' indispensabile: senza, il minimo automatico del flex
-     item resta la larghezza del contenuto e l'elemento non si restringe. */
-  flex: 1 1 0;
+  /* flex: 0 1 auto e non 1 1 0: la base e' il contenuto, cosi' la barra sta
+     al centro dell'header (justify-content: center) invece di occupare tutta
+     la riga. Continua a restringersi e a scorrere quando non ci sta.
+     Non si centra il contenuto DENTRO la barra: in un contenitore che scorre
+     i figli centrati possono risultare irraggiungibili all'inizio, quindi il
+     centraggio sta sull'header e dentro il contenuto resta allineato.
+     min-width: 0 e' indispensabile: senza, il minimo automatico del flex item
+     resta la larghezza del contenuto e l'elemento non si restringe. */
+  flex: 0 1 auto;
   min-width: 0;
   display: flex;
   align-items: center;
@@ -645,6 +604,15 @@ async function copyNote() {
 .floating-toolbar :deep(.ql-picker-label:hover .ql-stroke),
 .floating-toolbar :deep(.ql-picker.ql-expanded .ql-picker-label .ql-stroke) {
   stroke: var(--p-text-color);
+}
+/* Quill dichiara `min-width: 100%` sulle opzioni del picker: era relativo al
+   picker stesso, ma da quando le riposizioniamo in position:fixed (per non
+   farle ritagliare dalla toolbar che scorre) quel 100% si risolve sul
+   VIEWPORT, e il menu dei titoli occupava tutta la larghezza. Qui si
+   dimensiona sul contenuto. */
+.floating-toolbar :deep(.ql-picker.ql-expanded .ql-picker-options) {
+  min-width: max-content !important;
+  width: max-content;
 }
 .floating-toolbar :deep(.ql-picker-options) {
   background: var(--editor-bg);

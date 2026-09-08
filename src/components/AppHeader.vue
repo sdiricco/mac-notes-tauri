@@ -8,7 +8,7 @@
   <header class="app-header" data-tauri-drag-region="deep">
     <div class="header-left" :class="{ 'clears-traffic-lights': !browseInLayout }">
       <button
-        class="icon-btn"
+        class="icon-btn toggle-btn"
         :class="{ active: sidebarVisible }"
         :title="sidebarVisible ? 'Nascondi cartelle' : 'Mostra cartelle'"
         @click="emit('toggle-sidebar')"
@@ -25,7 +25,6 @@
            stesse cose era una seconda strada da mantenere. -->
       <nav class="crumbs" aria-label="Posizione">
         <span class="crumb crumb-folder">
-          <Icon :icon="folderIcon" />
           <span class="crumb-label">{{ store.currentViewName }}</span>
         </span>
         <template v-if="store.selectedNote">
@@ -60,6 +59,19 @@
       </div>
     </div>
 
+    <!-- Bersaglio del Teleport delle azioni sulla nota (cerca nella nota,
+         preferito, cestino, "⋮"): il markup e la logica restano in
+         NoteEditor — dialogo Markdown, riferimento all'editor, ortografia —
+         e qui ne cambia solo la posizione nel DOM. Cablare quelle azioni
+         attraverso due componenti avrebbe richiesto una catena di ref ed
+         eventi per la stessa resa. -->
+    <div id="header-note-actions" class="header-note-actions" data-tauri-drag-region="false"></div>
+
+    <div class="header-settings" data-tauri-drag-region="false">
+      <button class="icon-btn" title="Impostazioni (⌘,)" @click="ui.openSettings()">
+        <Icon icon="lucide:settings" />
+      </button>
+    </div>
   </header>
 </template>
 
@@ -67,6 +79,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { Icon } from '@iconify/vue'
 import { useNotesStore } from '../stores/notes'
+import { useUiStore } from '../stores/ui'
 import { formatNoteDate, notePreview } from '../utils/noteDisplay'
 
 defineProps({
@@ -82,17 +95,9 @@ defineProps({
 const emit = defineEmits(['toggle-sidebar'])
 
 const store = useNotesStore()
+const ui = useUiStore()
 
 const noteTitle = computed(() => store.selectedNote?.title?.trim() || 'Nuova nota')
-
-// Icona coerente con la voce scelta nella sidebar: una cartellina anche per
-// Preferiti o Cestino sarebbe sbagliata.
-const folderIcon = computed(() => {
-  if (store.isTrashView) return 'lucide:trash-2'
-  if (store.isPinnedView) return 'lucide:star'
-  if (store.isAllView) return 'lucide:notebook-text'
-  return 'lucide:folder'
-})
 
 function toggleCreateMenu() {
   createMenuOpen.value = !createMenuOpen.value
@@ -124,7 +129,7 @@ onBeforeUnmount(() => window.removeEventListener('mousedown', onGlobalMousedown)
 <style scoped>
 .app-header {
   flex-shrink: 0;
-  height: 48px;
+  height: 40px;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -150,11 +155,25 @@ onBeforeUnmount(() => window.removeEventListener('mousedown', onGlobalMousedown)
   gap: 8px;
 }
 
+/* Gruppo azioni e impostazioni in fondo a destra. */
+.header-note-actions,
+.header-settings {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
 .header-create {
   position: relative;
   flex-shrink: 0;
   display: flex;
   align-items: center;
+}
+
+/* Stacca il tasto dal bordo (o dai semafori, quando l'header e' a
+   sinistra). */
+.toggle-btn {
+  margin-left: 6px;
 }
 
 .icon-btn {

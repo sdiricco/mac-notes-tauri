@@ -14,6 +14,13 @@
       <button class="icon-btn back-btn" title="Cartelle" @click="ui.showFolders()">
         <Icon icon="lucide:arrow-left" />
       </button>
+      <!-- Avanti disabilitato: le note sono l'ultimo livello, non c'e' nulla
+           oltre. Presente comunque perche' la coppia avanti/indietro sta in
+           entrambe le viste: sparendo, i pulsanti accanto ballerebbero di
+           posizione al cambio vista. -->
+      <button class="icon-btn" title="Note" disabled>
+        <Icon icon="lucide:arrow-right" />
+      </button>
 
       <!-- Ricerca su tutte le cartelle, accanto alla creazione: sono le due
            azioni della banda, allineate a destra. Il suo pannello e'
@@ -463,7 +470,9 @@ defineExpose({ openSearch: () => globalSearchRef.value?.openSearch() })
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: var(--list-bg);
+  /* Nessuno sfondo proprio: con un pannello unico le due viste devono
+     avere lo stesso colore, e lo fornisce .sidebar-panel. Con --list-bg la
+     vista note risultava di una tinta diversa dalle cartelle. */
 }
 
 .note-list-header {
@@ -472,20 +481,29 @@ defineExpose({ openSearch: () => globalSearchRef.value?.openSearch() })
   gap: 8px;
   padding: 10px 12px 8px;
 }
-/* Banda alla quota dei semafori: 48px come l'header della colonna di destra,
-   così i due allineamenti coincidono. Il rientro sinistro lascia passare i
-   tre tasti finestra. */
+/* Banda alla quota dei semafori: stessa altezza dell'header della colonna di
+   destra (40px), così i due allineamenti coincidono — se si cambia una,
+   vanno cambiate insieme anche l'altra, il rientro della vista cartelle, la
+   striscia di trascinamento e trafficLightPosition.y in tauri.conf.json.
+   Per quel valore: in tao lo spostamento del pulsante e' (y - b), con b il
+   margine del pulsante nel contenitore originale. Misurato sul campo, il
+   centro dei semafori coincide con y, quindi per centrarli in una banda
+   alta H serve y = H/2 (40 -> 20). La stima iniziale y = H/2 + 2 partiva
+   da pulsanti alti 12px: sono 14.
+   Il rientro sinistro lascia passare i tre tasti finestra. */
 .note-list-topbar {
   display: flex;
   align-items: center;
-  height: 48px;
+  height: 40px;
   flex-shrink: 0;
   padding: 0 12px 0 74px;
 }
 /* La freccia non si restringe mai: e' l'unico modo di tornare alle
-   cartelle. */
+   cartelle. Il margine la stacca dai tre tasti finestra, che le stanno
+   subito a sinistra. */
 .back-btn {
   flex-shrink: 0;
+  margin-left: 8px;
 }
 /* Ricerca e creazione formano il gruppo di destra: e' la ricerca a essere
    spinta in fondo, e la creazione la segue. */
@@ -682,12 +700,19 @@ defineExpose({ openSearch: () => globalSearchRef.value?.openSearch() })
   display: flex;
   align-items: center;
   font-size: 15px;
+  /* Invisibile finche' non si passa sulla riga, ma con opacity: 0 restava
+     CLICCABILE: un click che gli capitava sopra apriva il menu della nota
+     invece di aprire la nota. Con il pannello unico, piu' stretto, il "⋮"
+     cade molto piu' vicino al punto in cui si clicca il titolo.
+     pointer-events: none lo rende inerte quando non si vede. */
   opacity: 0;
+  pointer-events: none;
   outline: none;
 }
 .note-item:hover .kebab,
 .note-item.active .kebab {
   opacity: 1;
+  pointer-events: auto;
 }
 .kebab:hover {
   background: var(--selection-bg);

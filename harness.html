@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Harness</title>
+    <script>
+      // Backend Tauri finto: permette di montare l'app reale nel browser per
+      // verificare layout e interazioni senza il processo nativo.
+      const FOLDERS = [
+        { id: 'f1', name: 'Lavoro', icon: 'lucide:folder' },
+        { id: 'f2', name: 'Personale', icon: 'lucide:folder' },
+      ]
+      const NOTES = [
+        { id: 'n1', folderId: 'f1', title: 'Riunione', content: '<p>Punti aperti</p>', pinned: false, deleted: false, createdAt: Date.now(), updatedAt: Date.now() },
+        { id: 'n2', folderId: 'f1', title: 'Stime', content: '<p>Backlog</p>', pinned: true, deleted: false, createdAt: Date.now(), updatedAt: Date.now() },
+        { id: 'n3', folderId: 'f2', title: 'Spesa', content: '<p>Pane</p>', pinned: false, deleted: false, createdAt: Date.now(), updatedAt: Date.now() },
+      ]
+      window.__TAURI_INTERNALS__ = {
+        invoke: (cmd) => {
+          if (cmd === 'store_load') return Promise.resolve({ folders: FOLDERS, notes: NOTES })
+          if (cmd === 'update_check_app_version') return Promise.resolve('0.0.0-harness')
+          return Promise.resolve(null)
+        },
+        transformCallback: (cb) => { const id = Math.random(); window[`_cb${id}`] = cb; return id },
+      }
+    </script>
+  </head>
+  <body class="dark-mode">
+    <div id="app"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

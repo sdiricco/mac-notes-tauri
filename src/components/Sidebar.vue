@@ -1,10 +1,29 @@
 <template>
   <aside class="sidebar">
+    <!-- Stessa banda della vista note, alla quota dei tre tasti finestra:
+         indietro disabilitato (le cartelle sono il primo livello), avanti
+         verso le note, poi ricerca e creazione. La coppia sta in entrambe le
+         viste così i pulsanti non cambiano posizione al cambio vista. -->
+    <div class="sidebar-topbar">
+      <button class="icon-btn back-btn" title="Cartelle" disabled>
+        <Icon icon="lucide:arrow-left" />
+      </button>
+      <button class="icon-btn" title="Note" @click="ui.showNotes()">
+        <Icon icon="lucide:arrow-right" />
+      </button>
+
+      <GlobalSearch class="search-in-topbar" />
+
+      <button class="icon-btn create-btn" title="Nuova cartella" @click="startNewFolder">
+        <Icon icon="lucide:folder-plus" />
+      </button>
+    </div>
+
     <nav class="sidebar-section">
       <button
         class="sidebar-item"
         :class="{ active: store.isAllView }"
-        @click="store.selectFolder('all')"
+        @click="openFolder('all')"
       >
         <Icon icon="lucide:notebook-text" />
         <span>Tutte le Note</span>
@@ -13,7 +32,7 @@
       <button
         class="sidebar-item"
         :class="{ active: store.isPinnedView }"
-        @click="store.selectFolder('pinned')"
+        @click="openFolder('pinned')"
       >
         <Icon icon="lucide:star" />
         <span>Preferiti</span>
@@ -22,7 +41,7 @@
       <button
         class="sidebar-item"
         :class="{ active: store.isTrashView }"
-        @click="store.selectFolder('trash')"
+        @click="openFolder('trash')"
       >
         <Icon icon="lucide:trash-2" />
         <span>Cestino</span>
@@ -99,10 +118,6 @@
         <Icon icon="lucide:arrow-up-circle" />
         <span>Aggiorna</span>
       </button>
-      <button class="sidebar-item" title="Impostazioni" @click="ui.openSettings()">
-        <Icon icon="lucide:settings" />
-        <span>Impostazioni</span>
-      </button>
     </div>
 
     <ContextMenu ref="menu" :model="menuItems">
@@ -122,6 +137,7 @@ import ContextMenu from 'primevue/contextmenu'
 import { useConfirm } from 'primevue/useconfirm'
 import { useToast } from 'primevue/usetoast'
 import { Icon } from '@iconify/vue'
+import GlobalSearch from './GlobalSearch.vue'
 import { useNotesStore } from '../stores/notes'
 import { useUiStore } from '../stores/ui'
 import { useUpdateCheckStore } from '../stores/updateCheck'
@@ -223,12 +239,20 @@ function endFolderDrag() {
   window.removeEventListener('mouseup', onFolderMouseup)
 }
 
+// Passa sempre alla vista note, anche quando la cartella cliccata e' gia'
+// quella selezionata: in quel caso selectedFolderId non cambia e il watcher
+// in App.vue non scatterebbe.
+function openFolder(id) {
+  store.selectFolder(id)
+  ui.showNotes()
+}
+
 function onFolderClick(folder) {
   if (suppressClick) {
     suppressClick = false
     return
   }
-  store.selectFolder(folder.id)
+  openFolder(folder.id)
 }
 
 onBeforeUnmount(endFolderDrag)
@@ -304,12 +328,41 @@ function removeFolder(folder) {
 </script>
 
 <style scoped>
+/* Banda identica a .note-list-topbar: stessa altezza e stesso rientro per i
+   semafori, così le due viste combaciano. */
+.sidebar-topbar {
+  display: flex;
+  align-items: center;
+  height: 40px;
+  flex-shrink: 0;
+  padding: 0 12px 0 74px;
+  margin: 0 -8px; /* annulla il padding orizzontale di .sidebar */
+}
+.sidebar-topbar .back-btn {
+  flex-shrink: 0;
+  margin-left: 8px;
+}
+.sidebar-topbar .search-in-topbar {
+  margin-left: auto;
+}
+.sidebar-topbar .create-btn {
+  flex-shrink: 0;
+}
+.icon-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
 .sidebar {
   height: 100%;
   display: flex;
   flex-direction: column;
   background: var(--sidebar-bg);
-  padding: 10px 8px 12px;
+  /* Nessun padding in alto: con 10px la banda partiva 10px piu' in basso di
+     quella della vista note (.note-list non ha padding), e le due coppie di
+     frecce risultavano disallineate in verticale. Lo spazio di respiro sopra
+     le cartelle lo da' ora la banda stessa, alta 40px. */
+  padding: 0 8px 12px;
   overflow-y: auto;
 }
 
@@ -317,7 +370,6 @@ function removeFolder(folder) {
   flex-shrink: 0;
   margin-top: auto;
   padding-top: 8px;
-  border-top: 1px solid var(--p-content-border-color);
   display: flex;
   flex-direction: column;
   gap: 1px;

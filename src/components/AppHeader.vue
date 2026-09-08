@@ -34,31 +34,6 @@
       </nav>
     </div>
 
-    <!-- A finestra stretta il "+" e' l'unico modo di creare: il tasto "Nuova
-         nota" vive nell'intestazione della lista, che a quella larghezza sta
-         chiusa nel cassetto. A finestra larga non lo mostro, per non
-         duplicare un comando gia' raggiungibile. -->
-    <div v-if="narrow" ref="createWrapEl" class="header-create" data-tauri-drag-region="false">
-      <button
-        class="icon-btn"
-        :class="{ active: createMenuOpen }"
-        title="Crea"
-        @click="toggleCreateMenu"
-      >
-        <Icon icon="lucide:plus" />
-      </button>
-      <div v-if="createMenuOpen" class="crumb-panel create-panel">
-        <button class="menu-row" @click="createNote">
-          <Icon icon="lucide:square-pen" />
-          <span>Nuova nota</span>
-        </button>
-        <button class="menu-row" @click="createFolder">
-          <Icon icon="lucide:folder-plus" />
-          <span>Nuova cartella</span>
-        </button>
-      </div>
-    </div>
-
     <!-- Bersaglio del Teleport delle azioni sulla nota (cerca nella nota,
          preferito, cestino, "⋮"): il markup e la logica restano in
          NoteEditor — dialogo Markdown, riferimento all'editor, ortografia —
@@ -76,18 +51,13 @@
 </template>
 
 <script setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed } from 'vue'
 import { Icon } from '@iconify/vue'
 import { useNotesStore } from '../stores/notes'
 import { useUiStore } from '../stores/ui'
-import { formatNoteDate, notePreview } from '../utils/noteDisplay'
 
 defineProps({
   sidebarVisible: { type: Boolean, default: true },
-  // Deciso in App.vue insieme al cassetto: un'unica soglia per tutta l'app
-  // invece di un secondo osservatore qui, che potrebbe scattare a una
-  // larghezza diversa e mostrare stati incoerenti.
-  narrow: { type: Boolean, default: false },
   // Cartelle e lista sono nel flusso a sinistra? In quel caso i semafori
   // della finestra cadono su di loro e l'header non deve scavalcarli.
   browseInLayout: { type: Boolean, default: false }
@@ -99,31 +69,6 @@ const ui = useUiStore()
 
 const noteTitle = computed(() => store.selectedNote?.title?.trim() || 'Nuova nota')
 
-function toggleCreateMenu() {
-  createMenuOpen.value = !createMenuOpen.value
-}
-
-function createNote() {
-  store.createNote()
-  createMenuOpen.value = false
-}
-
-// Stessa coppia di azioni della voce di menu nativa "Nuova Cartella": creare
-// e selezionare, cosi' la cartella nuova e' subito quella attiva.
-function createFolder() {
-  const folder = store.createFolder('Nuova cartella')
-  store.selectFolder(folder.id)
-  createMenuOpen.value = false
-}
-
-function onGlobalMousedown(event) {
-  if (createMenuOpen.value && createWrapEl.value && !createWrapEl.value.contains(event.target)) {
-    createMenuOpen.value = false
-  }
-}
-
-onMounted(() => window.addEventListener('mousedown', onGlobalMousedown))
-onBeforeUnmount(() => window.removeEventListener('mousedown', onGlobalMousedown))
 </script>
 
 <style scoped>
@@ -158,13 +103,6 @@ onBeforeUnmount(() => window.removeEventListener('mousedown', onGlobalMousedown)
 /* Gruppo azioni e impostazioni in fondo a destra. */
 .header-note-actions,
 .header-settings {
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-}
-
-.header-create {
-  position: relative;
   flex-shrink: 0;
   display: flex;
   align-items: center;
@@ -309,16 +247,6 @@ onBeforeUnmount(() => window.removeEventListener('mousedown', onGlobalMousedown)
   border-radius: 10px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
   z-index: 100;
-}
-
-/* Menu del "+": largo quanto le sue voci, non 360px. Va DOPO .crumb-panel,
-   di cui riusa l'aspetto: stessa specificita', quindi vince l'ultima regola.
-   Ancorato a destra perche' il "+" sta sul bordo destro dell'header. */
-.create-panel {
-  left: auto;
-  right: 0;
-  width: max-content;
-  min-width: 170px;
 }
 
 .panel-label {

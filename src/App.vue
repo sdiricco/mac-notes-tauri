@@ -64,7 +64,6 @@
         <div class="main-col">
           <AppHeader
             :sidebar-visible="ui.sidebarVisible"
-            :narrow="isNarrow"
             :browse-in-layout="sidebarInLayout"
             @toggle-sidebar="ui.toggleSidebar()"
           />
@@ -335,6 +334,16 @@ onBeforeUnmount(() => {
   z-index: 20;
   box-shadow: 2px 0 16px rgba(0, 0, 0, 0.28);
   border-right: 1px solid var(--p-content-border-color);
+}
+
+/* Fondo netto nel cassetto: --sidebar-bg e' semitrasparente (nel flusso ha
+   sotto solo lo sfondo finestra), ma qui il pannello copre l'editor e si
+   leggeva il testo attraverso. Va sovrascritto anche sui figli, che
+   dipingono a loro volta con la variabile traslucida. */
+.sidebar-panel.is-drawer,
+.sidebar-panel.is-drawer .sidebar,
+.sidebar-panel.is-drawer .note-list {
+  background: var(--sidebar-bg-solid);
 }
 
 /* SOLO la zona dei semafori, non tutta la banda: la banda ora contiene i

@@ -6,6 +6,10 @@
   --icon-color: #6e6e6e;
   --selection-bg: rgba(0, 0, 0, 0.08);
   --sidebar-bg: rgba(242, 242, 242, 0.78);
+  /* Stesso colore a piena opacita': serve al cassetto (finestra stretta),
+     dove il pannello sta SOPRA l'editor e la trasparenza lascerebbe
+     leggere il testo sotto. */
+  --sidebar-bg-solid: #f2f2f2;
   --list-bg: #f2f2f2;
   --card-bg: #ffffff;
   --editor-bg: #ffffff;
@@ -40,6 +44,7 @@
   --icon-color: #9a9a9a;
   --selection-bg: rgba(255, 255, 255, 0.12);
   --sidebar-bg: rgba(38, 38, 38, 0.72);
+  --sidebar-bg-solid: #262626;
   --list-bg: #242424;
   --card-bg: #313131;
   --editor-bg: #1a1a1a;

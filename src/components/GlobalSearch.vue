@@ -13,61 +13,74 @@
       <Icon icon="lucide:search" />
     </button>
 
-    <!-- Teleport + position:fixed: il pannello della lista ha
-         overflow: hidden e ritagliava il pannello, che e' in
-         position:absolute al suo interno. Non era un problema di z-index —
-         nessun valore lo avrebbe fatto uscire da un contenitore che
-         ritaglia. Stessa soluzione del tooltip della toolbar e del picker
-         colore. -->
+    <!-- Teleport su <body>: il pannello della lista ha overflow: hidden e
+         ritagliava il riquadro, che gli era interno. Non era un problema di
+         z-index — nessun valore lo avrebbe fatto uscire da un contenitore
+         che ritaglia. Stessa soluzione del tooltip della toolbar e del
+         picker colore.
+         Il riquadro non e' piu' ancorato all'icona: e' un dialogo centrato,
+         e a finestra stretta occupa tutto. Cosi' non serve piu' calcolarne
+         le coordinate, e il velo dice che finche' e' aperto si cerca. -->
     <Teleport to="body">
-      <div
-        v-if="panelOpen"
-        ref="panelEl"
-        class="search-panel"
-        :style="{ top: panelPos.top, left: panelPos.left }"
-      >
-      <div class="panel-field">
-        <Icon icon="lucide:search" class="field-icon" />
-        <input
-          ref="inputEl"
-          v-model="query"
-          type="text"
-          placeholder="Cerca in tutte le note"
-          @keydown.esc="close"
-          @keydown.down.prevent="move(1)"
-          @keydown.up.prevent="move(-1)"
-          @keydown.enter.prevent="openHighlighted"
-        />
-        <button v-if="query" class="clear-btn" title="Cancella" @click="clearQuery">
-          <Icon icon="lucide:x" />
-        </button>
-      </div>
+      <div v-if="panelOpen" class="search-overlay" :class="{ 'is-fullscreen': ui.narrow }">
+        <div ref="panelEl" class="search-panel">
+          <div class="panel-field">
+            <Icon icon="lucide:search" class="field-icon" />
+            <input
+              ref="inputEl"
+              v-model="query"
+              type="text"
+              placeholder="Cerca in tutte le note"
+              @keydown.esc.stop="close"
+              @keydown.down.prevent="move(1)"
+              @keydown.up.prevent="move(-1)"
+              @keydown.enter.prevent="openHighlighted"
+            />
+            <button v-if="query" class="clear-btn" title="Cancella" @click="clearQuery">
+              <Icon icon="lucide:x" />
+            </button>
+            <!-- A tutta pagina non c'e' velo da cliccare per uscire: serve un
+                 comando esplicito. -->
+            <button
+              v-if="ui.narrow"
+              class="clear-btn close-btn"
+              title="Chiudi"
+              @click="close"
+            >
+              <Icon icon="lucide:x" />
+            </button>
+          </div>
 
-      <div class="panel-label">{{ query.trim() ? 'Risultati' : 'Note recenti' }}</div>
+          <!-- Scorre solo l'elenco: il campo resta in vista mentre si sfoglia,
+               e il riquadro non cambia altezza a ogni tasto. -->
+          <div class="panel-body">
+            <div class="panel-label">{{ query.trim() ? 'Risultati' : 'Note recenti' }}</div>
 
-      <p v-if="!items.length" class="panel-empty">
-        {{ query.trim() ? `Nessun risultato per "${query}"` : 'Nessuna nota' }}
-      </p>
+            <p v-if="!items.length" class="panel-empty">
+              {{ query.trim() ? `Nessun risultato per "${query}"` : 'Nessuna nota' }}
+            </p>
 
-      <button
-        v-for="(item, i) in items"
-        :key="item.note.id"
-        class="result"
-        :class="{ highlighted: i === highlighted }"
-        @click="open(item.note.id)"
-        @mouseenter="highlighted = i"
-      >
-        <span class="result-top">
-          <Icon v-if="item.note.pinned" icon="lucide:star" class="pin-icon" />
-          <span class="result-title">{{ item.note.title || 'Nuova nota' }}</span>
-        </span>
-        <span class="result-meta">
-          <Icon :icon="item.note.trashed ? 'lucide:trash-2' : 'lucide:folder'" />
-          {{ item.folderName }}
-          <span class="result-date">{{ formatNoteDate(item.note.updatedAt) }}</span>
-        </span>
-          <span class="result-snippet">{{ item.snippet || notePreview(item.note.content) }}</span>
-        </button>
+            <button
+              v-for="(item, i) in items"
+              :key="item.note.id"
+              class="result"
+              :class="{ highlighted: i === highlighted }"
+              @click="open(item.note.id)"
+              @mouseenter="highlighted = i"
+            >
+              <span class="result-top">
+                <Icon v-if="item.note.pinned" icon="lucide:star" class="pin-icon" />
+                <span class="result-title">{{ item.note.title || 'Nuova nota' }}</span>
+              </span>
+              <span class="result-meta">
+                <Icon :icon="item.note.trashed ? 'lucide:trash-2' : 'lucide:folder'" />
+                {{ item.folderName }}
+                <span class="result-date">{{ formatNoteDate(item.note.updatedAt) }}</span>
+              </span>
+              <span class="result-snippet">{{ item.snippet || notePreview(item.note.content) }}</span>
+            </button>
+          </div>
+        </div>
       </div>
     </Teleport>
   </div>
@@ -77,11 +90,13 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { Icon } from '@iconify/vue'
 import { useNotesStore } from '../stores/notes'
+import { useUiStore } from '../stores/ui'
 import { stripHtml } from '../utils/markdown'
 import { formatNoteDate, notePreview } from '../utils/noteDisplay'
 import { isMac } from '../utils/shortcuts'
 
 const store = useNotesStore()
+const ui = useUiStore()
 
 const panelOpen = ref(false)
 const query = ref('')
@@ -89,20 +104,6 @@ const highlighted = ref(0)
 const inputEl = ref(null)
 const wrapEl = ref(null)
 const panelEl = ref(null)
-// Coordinate di finestra: il pannello e' teleportato, quindi non puo'
-// ancorarsi al wrapper con il CSS.
-const panelPos = ref({ top: '0px', left: '0px' })
-
-const PANEL_WIDTH = 340
-
-function positionPanel() {
-  const rect = wrapEl.value?.getBoundingClientRect()
-  if (!rect) return
-  // Allineato al bordo sinistro dell'icona, rientrato se sborderebbe a
-  // destra dalla finestra.
-  const left = Math.min(rect.left, window.innerWidth - PANEL_WIDTH - 8)
-  panelPos.value = { top: `${Math.round(rect.bottom + 6)}px`, left: `${Math.round(Math.max(8, left))}px` }
-}
 
 const searchHint = computed(() => (isMac ? '⇧⌘F' : 'Ctrl+Shift+F'))
 
@@ -160,7 +161,6 @@ function snippetAround(body, q) {
 
 // Esposta al genitore per la voce di menu ⇧⌘F.
 async function openSearch() {
-  positionPanel()
   panelOpen.value = true
   await nextTick()
   inputEl.value?.focus()
@@ -216,19 +216,11 @@ function onGlobalMousedown(event) {
   if (!dentroIcona && !dentroPannello) close()
 }
 
-// Con coordinate fisse, ridimensionando la finestra il pannello resterebbe
-// dove era: si richiude, piu' semplice e prevedibile che inseguirlo.
-function onWindowResize() {
-  if (panelOpen.value) close()
-}
-
 onMounted(() => {
   window.addEventListener('mousedown', onGlobalMousedown)
-  window.addEventListener('resize', onWindowResize)
 })
 onBeforeUnmount(() => {
   window.removeEventListener('mousedown', onGlobalMousedown)
-  window.removeEventListener('resize', onWindowResize)
 })
 
 defineExpose({ openSearch })
@@ -260,28 +252,61 @@ defineExpose({ openSearch })
   color: var(--p-text-color);
 }
 
-/* :global perche' teleportato su <body>, fuori dallo scope del componente.
-   position: fixed con coordinate calcolate all'apertura (vedi
-   positionPanel). */
-:global(.search-panel) {
+:global(.search-overlay) {
   position: fixed;
-  width: 340px;
-  max-height: 62vh;
-  overflow-y: auto;
-  padding: 4px;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.34);
+}
+
+/* Altezza fissa e non max-height: il riquadro non deve crescere e rimpicciolirsi
+   sotto le dita mentre si digita. */
+:global(.search-panel) {
+  display: flex;
+  flex-direction: column;
+  width: min(680px, 92vw);
+  height: min(560px, 74vh);
+  overflow: hidden;
   background: var(--editor-toolbar-bg);
   border: 1px solid var(--p-content-border-color);
-  border-radius: 10px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-  z-index: 100;
+  border-radius: 12px;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.38);
+}
+
+/* A finestra stretta prende tutto: bordi e angoli tondi non hanno senso
+   quando non c'e' niente attorno da cui staccarsi. */
+:global(.search-overlay.is-fullscreen) {
+  background: none;
+}
+:global(.search-overlay.is-fullscreen .search-panel) {
+  width: 100%;
+  height: 100%;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+/* A tutta pagina il campo finisce sotto i tre tasti finestra, che macOS
+   disegna sopra la webview: stesso rientro delle altre bande in cima. */
+:global(.search-overlay.is-fullscreen .panel-field) {
+  padding-left: 74px;
+}
+
+:global(.panel-body) {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 4px;
 }
 
 :global(.panel-field) {
+  flex-shrink: 0;
   display: flex;
   align-items: center;
-  gap: 7px;
-  padding: 8px 10px;
-  margin: -4px -4px 2px;
+  gap: 9px;
+  padding: 12px 14px;
   background: var(--editor-toolbar-bg);
   border-bottom: 1px solid var(--p-content-border-color);
 }
@@ -296,7 +321,7 @@ defineExpose({ openSearch })
   border: none;
   background: transparent;
   color: var(--p-text-color);
-  font-size: 13px;
+  font-size: 15px;
   outline: none;
 }
 :global(.clear-btn) {
@@ -311,6 +336,9 @@ defineExpose({ openSearch })
 }
 :global(.clear-btn:hover) {
   color: var(--p-text-color);
+}
+:global(.close-btn) {
+  font-size: 17px;
 }
 
 :global(.panel-label) {

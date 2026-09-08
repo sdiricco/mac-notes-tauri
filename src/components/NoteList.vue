@@ -436,18 +436,15 @@ function confirmBulkDelete() {
       }
     })
   } else {
-    confirm.require({
-      message: `Spostare ${count} ${noun} nel cestino?`,
-      header: 'Sposta nel cestino',
-      icon: 'pi pi-exclamation-triangle',
-      acceptLabel: 'Sposta',
-      rejectLabel: 'Annulla',
-      acceptClass: 'p-button-danger',
-      rejectClass: 'p-button-secondary',
-      accept: () => {
-        store.trashNotes(ids)
-        exitSelectionMode()
-      }
+    // Nel cestino si ripristina, quindi non si chiede conferma. Il toast
+    // resta perche' qui le note spariscono in blocco e la selezione si
+    // chiude: senza, non si vedrebbe *quante* ne sono andate.
+    store.trashNotes(ids)
+    exitSelectionMode()
+    toast.add({
+      severity: 'success',
+      summary: `${count} ${noun} nel cestino`,
+      life: 1800
     })
   }
 }

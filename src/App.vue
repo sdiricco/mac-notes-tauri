@@ -73,8 +73,7 @@
         </div>
     </div>
 
-    <SettingsDialog />
-    <ShortcutsDialog />
+    <SettingsPage />
   </template>
 
   <ConfirmDialog />
@@ -90,8 +89,7 @@ import AppHeader from './components/AppHeader.vue'
 import Sidebar from './components/Sidebar.vue'
 import NoteList from './components/NoteList.vue'
 import NoteEditor from './components/NoteEditor.vue'
-import SettingsDialog from './components/SettingsDialog.vue'
-import ShortcutsDialog from './components/ShortcutsDialog.vue'
+import SettingsPage from './components/SettingsPage.vue'
 import { useNotesStore } from './stores/notes'
 import { useSettingsStore } from './stores/settings'
 import { useUiStore } from './stores/ui'
@@ -124,7 +122,7 @@ const DIVIDER = 1
 // schiacciato sotto il proprio minimo.
 const DRAWER_BELOW = 640
 
-const isNarrow = ref(false)
+const isNarrow = computed(() => ui.narrow)
 // Occupa spazio nel layout solo se visibile E non sovrapposto: da
 // sovrapposto e' in position:absolute e non entra nei calcoli.
 const sidebarInLayout = computed(() => !isNarrow.value && ui.sidebarVisible)
@@ -179,7 +177,7 @@ function onWindowResize() {
   // coprirebbe il contenuto proprio quando lo spazio scarseggia. Uscendone si
   // riapre, tornando allo stato atteso a finestra larga.
   if (narrow !== isNarrow.value) {
-    isNarrow.value = narrow
+    ui.setNarrow(narrow)
     if (narrow === ui.sidebarVisible) ui.toggleSidebar()
   }
   if (sidebarInLayout.value) sidebarWidth.value = clamp(sidebarWidth.value)
@@ -205,6 +203,8 @@ watch(
 )
 
 function onKeydown(event) {
+  // Con le impostazioni aperte Esc spetta a loro: le chiude SettingsPage.
+  if (ui.settingsOpen) return
   if (event.key === 'Escape' && isNarrow.value && ui.sidebarVisible) ui.toggleSidebar()
 }
 

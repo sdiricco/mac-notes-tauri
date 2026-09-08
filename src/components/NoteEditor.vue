@@ -40,7 +40,7 @@
               v-if="!store.selectedNote.trashed"
               class="icon-btn"
               title="Sposta nel cestino"
-              @click="confirmTrash"
+              @click="moveToTrash"
             >
               <Icon icon="lucide:trash-2" />
             </button>
@@ -113,7 +113,6 @@
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 import Dialog from 'primevue/dialog'
 import { useToast } from 'primevue/usetoast'
-import { useConfirm } from 'primevue/useconfirm'
 import { Icon } from '@iconify/vue'
 import { useNotesStore } from '../stores/notes'
 import { useSettingsStore } from '../stores/settings'
@@ -124,7 +123,6 @@ import { api } from '../utils/api'
 const store = useNotesStore()
 const settings = useSettingsStore()
 const toast = useToast()
-const confirm = useConfirm()
 
 const quillToolbarEl = ref(null)
 const quillEditorRef = ref(null)
@@ -162,18 +160,11 @@ function openMarkdownPreview() {
   markdownPreviewOpen.value = true
 }
 
-function confirmTrash() {
-  const title = store.selectedNote.title?.trim() || 'Nuova nota'
-  confirm.require({
-    message: `Vuoi spostare la nota "${title}" nel cestino?`,
-    header: 'Sposta nel cestino',
-    icon: 'pi pi-exclamation-triangle',
-    acceptLabel: 'Sposta',
-    rejectLabel: 'Annulla',
-    acceptClass: 'p-button-danger',
-    rejectClass: 'p-button-secondary',
-    accept: () => store.trashNote(store.selectedNote.id)
-  })
+// Nessuna conferma: la nota va nel cestino, da cui si ripristina. Il menu
+// della card faceva gia' cosi', quindi lo stesso comando aveva due
+// comportamenti diversi a seconda di dove lo si dava.
+function moveToTrash() {
+  store.trashNote(store.selectedNote.id)
 }
 
 function onContentChange(html) {

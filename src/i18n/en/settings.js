@@ -65,7 +65,10 @@ export default {
       findInNote: 'Find in Note',
       findInAllNotes: 'Find in All Notes',
       toggleSidebar: 'Show/Hide Sidebar',
-      settings: 'Settings'
+      settings: 'Settings',
+      zoomIn: 'Zoom In',
+      zoomOut: 'Zoom Out',
+      zoomReset: 'Actual Size'
     },
     formatting: {
       title: 'Formatting (in the editor)',

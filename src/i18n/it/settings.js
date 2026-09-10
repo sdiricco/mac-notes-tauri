@@ -65,7 +65,10 @@ export default {
       findInNote: 'Cerca nella nota',
       findInAllNotes: 'Cerca in tutte le note',
       toggleSidebar: 'Mostra/Nascondi sidebar',
-      settings: 'Impostazioni'
+      settings: 'Impostazioni',
+      zoomIn: 'Ingrandisci',
+      zoomOut: 'Riduci',
+      zoomReset: 'Dimensione effettiva'
     },
     formatting: {
       title: 'Formattazione (nell’editor)',

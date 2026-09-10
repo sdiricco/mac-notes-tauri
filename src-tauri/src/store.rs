@@ -36,11 +36,31 @@ fn config_file_in(default_root: &Path) -> PathBuf {
     default_root.join("config.json")
 }
 
-pub fn resolve_root_in(default_root: &Path) -> PathBuf {
-    let custom = fs::read_to_string(config_file_in(default_root))
+/// config.json come oggetto: vuoto se manca o e' corrotto. Contiene le poche
+/// preferenze che devono vivere fuori dalla webview (dataDir, zoom): quelle
+/// che Rust deve conoscere prima che il frontend esista.
+fn read_config_in(default_root: &Path) -> serde_json::Map<String, Value> {
+    fs::read_to_string(config_file_in(default_root))
         .ok()
         .and_then(|s| serde_json::from_str::<Value>(&s).ok())
-        .and_then(|c| c.get("dataDir").and_then(Value::as_str).map(PathBuf::from));
+        .and_then(|v| v.as_object().cloned())
+        .unwrap_or_default()
+}
+
+fn write_config_in(
+    default_root: &Path,
+    cfg: &serde_json::Map<String, Value>,
+) -> Result<(), String> {
+    fs::create_dir_all(default_root).map_err(|e| e.to_string())?;
+    let text = serde_json::to_string_pretty(cfg).map_err(|e| e.to_string())?;
+    fs::write(config_file_in(default_root), text).map_err(|e| e.to_string())
+}
+
+pub fn resolve_root_in(default_root: &Path) -> PathBuf {
+    let custom = read_config_in(default_root)
+        .get("dataDir")
+        .and_then(Value::as_str)
+        .map(PathBuf::from);
     match custom {
         // Se la cartella scelta e' sparita (disco esterno scollegato, cartella
         // cancellata) si torna alla predefinita invece di fallire ogni
@@ -50,14 +70,35 @@ pub fn resolve_root_in(default_root: &Path) -> PathBuf {
     }
 }
 
-fn write_config_in(default_root: &Path, data_dir: Option<&Path>) -> Result<(), String> {
-    fs::create_dir_all(default_root).map_err(|e| e.to_string())?;
-    let cfg = match data_dir {
-        Some(dir) => json!({ "dataDir": dir.display().to_string() }),
-        None => json!({}),
+fn write_data_dir_in(default_root: &Path, data_dir: Option<&Path>) -> Result<(), String> {
+    let mut cfg = read_config_in(default_root);
+    match data_dir {
+        Some(dir) => cfg.insert("dataDir".into(), json!(dir.display().to_string())),
+        None => cfg.remove("dataDir"),
     };
-    let text = serde_json::to_string_pretty(&cfg).map_err(|e| e.to_string())?;
-    fs::write(config_file_in(default_root), text).map_err(|e| e.to_string())
+    write_config_in(default_root, &cfg)
+}
+
+/// Fattore di zoom della webview (1.0 = 100%), letto all'avvio da lib.rs.
+pub fn zoom_get(app: &AppHandle) -> f64 {
+    default_root(app).map(|r| zoom_get_in(&r)).unwrap_or(1.0)
+}
+
+pub fn zoom_get_in(default_root: &Path) -> f64 {
+    read_config_in(default_root)
+        .get("zoom")
+        .and_then(Value::as_f64)
+        .unwrap_or(1.0)
+}
+
+pub fn zoom_set(app: &AppHandle, factor: f64) -> Result<(), String> {
+    zoom_set_in(&default_root(app)?, factor)
+}
+
+pub fn zoom_set_in(default_root: &Path, factor: f64) -> Result<(), String> {
+    let mut cfg = read_config_in(default_root);
+    cfg.insert("zoom".into(), json!(factor));
+    write_config_in(default_root, &cfg)
 }
 
 /// Identifier dell'app prima della rinomina in RustNotes (v0.9 e precedenti):
@@ -217,7 +258,7 @@ pub fn set_data_dir_in(
         move_data_in(&current, &new_root)?;
         "moved"
     };
-    write_config_in(default_root, target)?;
+    write_data_dir_in(default_root, target)?;
     Ok(SetDataDirResult {
         dir: new_root.display().to_string(),
         mode,
@@ -537,6 +578,27 @@ mod tests {
             migrate_legacy_in(&fresh, &parent.path().join("inesistente")).unwrap(),
             None
         );
+    }
+
+    #[test]
+    fn zoom_e_cartella_dati_convivono_nello_stesso_config() {
+        let default = tempfile::tempdir().unwrap();
+        let target = tempfile::tempdir().unwrap();
+        assert_eq!(zoom_get_in(default.path()), 1.0);
+        zoom_set_in(default.path(), 1.2).unwrap();
+        set_data_dir_in(default.path(), Some(target.path())).unwrap();
+        assert_eq!(
+            zoom_get_in(default.path()),
+            1.2,
+            "cambiare cartella non azzera lo zoom"
+        );
+        assert_eq!(resolve_root_in(default.path()), target.path());
+        set_data_dir_in(default.path(), None).unwrap();
+        assert_eq!(zoom_get_in(default.path()), 1.2);
+        // config corrotto: valori di default, nessun panico
+        fs::write(config_file_in(default.path()), "{ rotto").unwrap();
+        assert_eq!(zoom_get_in(default.path()), 1.0);
+        assert_eq!(resolve_root_in(default.path()), default.path());
     }
 
     #[test]

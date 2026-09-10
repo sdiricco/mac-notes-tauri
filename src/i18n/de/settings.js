@@ -65,7 +65,10 @@ export default {
       findInNote: 'In Notiz suchen',
       findInAllNotes: 'In allen Notizen suchen',
       toggleSidebar: 'Seitenleiste ein-/ausblenden',
-      settings: 'Einstellungen'
+      settings: 'Einstellungen',
+      zoomIn: 'Vergrößern',
+      zoomOut: 'Verkleinern',
+      zoomReset: 'Originalgröße'
     },
     formatting: {
       title: 'Formatierung (im Editor)',

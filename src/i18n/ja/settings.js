@@ -65,7 +65,10 @@ export default {
       findInNote: 'メモ内を検索',
       findInAllNotes: 'すべてのメモを検索',
       toggleSidebar: 'サイドバーを表示/隠す',
-      settings: '設定'
+      settings: '設定',
+      zoomIn: '拡大',
+      zoomOut: '縮小',
+      zoomReset: '実際のサイズ'
     },
     formatting: {
       title: '書式（エディタ内）',

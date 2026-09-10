@@ -65,7 +65,10 @@ export default {
       findInNote: 'Rechercher dans la note',
       findInAllNotes: 'Rechercher dans toutes les notes',
       toggleSidebar: 'Afficher/Masquer la barre latérale',
-      settings: 'Réglages'
+      settings: 'Réglages',
+      zoomIn: 'Zoom avant',
+      zoomOut: 'Zoom arrière',
+      zoomReset: 'Taille réelle'
     },
     formatting: {
       title: 'Mise en forme (dans l’éditeur)',

@@ -1,6 +1,6 @@
 [package]
 name = "rustnotes"
-version = "0.10.0"
+version = "0.11.0"
 description = "RustNotes: a simple, local-first notes app. Vue frontend, Rust backend (Tauri v2)."
 authors = ["Simone Di Ricco"]
 edition = "2021"

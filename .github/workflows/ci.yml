@@ -17,9 +17,11 @@ jobs:
       - uses: pnpm/action-setup@v4
         with:
           version: 10
+      # Node 22: jsdom (vitest) usa API di undici assenti in Node 20
+      # ("webidl.util.markAsUncloneable is not a function").
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - name: Typecheck

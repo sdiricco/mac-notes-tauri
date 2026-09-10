@@ -6,6 +6,7 @@ mod file_transfer;
 mod menu;
 mod store;
 mod update_check;
+mod zoom;
 
 use serde_json::Value;
 use tauri::{AppHandle, Emitter, Manager, Theme};
@@ -133,6 +134,12 @@ pub fn run() {
             }
             let m = menu::build_menu(&handle, menu::system_lang())?;
             app.set_menu(m)?;
+
+            // Zoom salvato: riapplicato subito, prima che la pagina si veda.
+            let saved = store::zoom_get(&handle);
+            if (saved - 1.0).abs() > f64::EPSILON {
+                zoom::apply(&handle, saved);
+            }
 
             // Il controllo automatico periodico e' limitato alla build
             // pacchettizzata, come nell'originale (`app.isPackaged`): in dev

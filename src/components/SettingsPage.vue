@@ -515,7 +515,10 @@ const shortcutGroups = computed(() => [
       { label: t('settings.shortcuts.general.findInNote'), keys: [MOD, 'F'] },
       { label: t('settings.shortcuts.general.findInAllNotes'), keys: [MOD, SHIFT, 'F'] },
       { label: t('settings.shortcuts.general.toggleSidebar'), keys: [MOD, '/'] },
-      { label: t('settings.shortcuts.general.settings'), keys: [MOD, ','] }
+      { label: t('settings.shortcuts.general.settings'), keys: [MOD, ','] },
+      { label: t('settings.shortcuts.general.zoomIn'), keys: [MOD, '+'] },
+      { label: t('settings.shortcuts.general.zoomOut'), keys: [MOD, '-'] },
+      { label: t('settings.shortcuts.general.zoomReset'), keys: [MOD, '0'] }
     ]
   },
   {

@@ -65,7 +65,10 @@ export default {
       findInNote: '在备忘录中查找',
       findInAllNotes: '在所有备忘录中查找',
       toggleSidebar: '显示/隐藏边栏',
-      settings: '设置'
+      settings: '设置',
+      zoomIn: '放大',
+      zoomOut: '缩小',
+      zoomReset: '实际大小'
     },
     formatting: {
       title: '格式（编辑器内）',

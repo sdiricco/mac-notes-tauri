@@ -4,9 +4,9 @@
 //! stesse.
 //!
 //! Gap noti rispetto all'originale, dichiarati invece che nascosti:
-//! - Reload / Toggle DevTools / Zoom in-out-reset non hanno un
-//!   `PredefinedMenuItem` equivalente in Tauri (sono `role` di Electron legati
-//!   alla BrowserWindow, non voci di sistema): omessi per ora.
+//! - Reload / Toggle DevTools non hanno un `PredefinedMenuItem` equivalente
+//!   in Tauri (sono `role` di Electron legati alla BrowserWindow): omessi.
+//!   Lo zoom, che era nello stesso gruppo, e' implementato a mano (zoom.rs).
 //! - "Porta tutto in primo piano" (role: front) non ha equivalente diretto:
 //!   omesso.
 
@@ -36,6 +36,9 @@ struct Labels {
     view: &'static str,
     toggle_sidebar: &'static str,
     shortcuts: &'static str,
+    zoom_in: &'static str,
+    zoom_out: &'static str,
+    zoom_reset: &'static str,
     window: &'static str,
     help: &'static str,
     help_repo: &'static str,
@@ -59,6 +62,9 @@ const EN: Labels = Labels {
     view: "View",
     toggle_sidebar: "Show/Hide Sidebar",
     shortcuts: "Keyboard Shortcuts",
+    zoom_in: "Zoom In",
+    zoom_out: "Zoom Out",
+    zoom_reset: "Actual Size",
     window: "Window",
     help: "Help",
     help_repo: "GitHub Repository",
@@ -82,6 +88,9 @@ const IT: Labels = Labels {
     view: "Vista",
     toggle_sidebar: "Mostra/Nascondi Sidebar",
     shortcuts: "Scorciatoie da tastiera",
+    zoom_in: "Ingrandisci",
+    zoom_out: "Riduci",
+    zoom_reset: "Dimensione effettiva",
     window: "Finestra",
     help: "Aiuto",
     help_repo: "Repository su GitHub",
@@ -105,6 +114,9 @@ const ES: Labels = Labels {
     view: "Visualización",
     toggle_sidebar: "Mostrar/ocultar barra lateral",
     shortcuts: "Atajos de teclado",
+    zoom_in: "Acercar",
+    zoom_out: "Alejar",
+    zoom_reset: "Tamaño real",
     window: "Ventana",
     help: "Ayuda",
     help_repo: "Repositorio en GitHub",
@@ -128,6 +140,9 @@ const FR: Labels = Labels {
     view: "Présentation",
     toggle_sidebar: "Afficher/masquer la barre latérale",
     shortcuts: "Raccourcis clavier",
+    zoom_in: "Zoom avant",
+    zoom_out: "Zoom arrière",
+    zoom_reset: "Taille réelle",
     window: "Fenêtre",
     help: "Aide",
     help_repo: "Dépôt GitHub",
@@ -151,6 +166,9 @@ const DE: Labels = Labels {
     view: "Darstellung",
     toggle_sidebar: "Seitenleiste ein-/ausblenden",
     shortcuts: "Tastaturkurzbefehle",
+    zoom_in: "Vergrößern",
+    zoom_out: "Verkleinern",
+    zoom_reset: "Originalgröße",
     window: "Fenster",
     help: "Hilfe",
     help_repo: "GitHub-Repository",
@@ -174,6 +192,9 @@ const PT: Labels = Labels {
     view: "Visualizar",
     toggle_sidebar: "Mostrar/Ocultar Barra Lateral",
     shortcuts: "Atalhos de Teclado",
+    zoom_in: "Ampliar",
+    zoom_out: "Reduzir",
+    zoom_reset: "Tamanho Real",
     window: "Janela",
     help: "Ajuda",
     help_repo: "Repositório no GitHub",
@@ -197,6 +218,9 @@ const ZH: Labels = Labels {
     view: "显示",
     toggle_sidebar: "显示/隐藏边栏",
     shortcuts: "键盘快捷键",
+    zoom_in: "放大",
+    zoom_out: "缩小",
+    zoom_reset: "实际大小",
     window: "窗口",
     help: "帮助",
     help_repo: "GitHub 仓库",
@@ -220,6 +244,9 @@ const JA: Labels = Labels {
     view: "表示",
     toggle_sidebar: "サイドバーを表示/非表示",
     shortcuts: "キーボードショートカット",
+    zoom_in: "拡大",
+    zoom_out: "縮小",
+    zoom_reset: "実際のサイズ",
     window: "ウインドウ",
     help: "ヘルプ",
     help_repo: "GitHub リポジトリ",
@@ -342,6 +369,30 @@ pub fn build_menu(app: &AppHandle, lang: &str) -> tauri::Result<Menu<Wry>> {
             None::<&str>,
         )?)
         .separator()
+        // "CmdOrCtrl+=" e' il tasto fisico di "+" senza Shift: e' la scelta di
+        // browser ed Electron, cosi' ⌘+ e ⌘= fanno entrambi zoom in.
+        .item(&MenuItem::with_id(
+            app,
+            "zoom-in",
+            l.zoom_in,
+            true,
+            Some("CmdOrCtrl+="),
+        )?)
+        .item(&MenuItem::with_id(
+            app,
+            "zoom-out",
+            l.zoom_out,
+            true,
+            Some("CmdOrCtrl+-"),
+        )?)
+        .item(&MenuItem::with_id(
+            app,
+            "zoom-reset",
+            l.zoom_reset,
+            true,
+            Some("CmdOrCtrl+0"),
+        )?)
+        .separator()
         .item(&PredefinedMenuItem::fullscreen(app, None)?)
         .build()?;
 
@@ -390,6 +441,9 @@ pub fn handle_menu_event(app: &AppHandle, event_id: &str) {
         "search-all" => send("menu:search-all"),
         "toggle-sidebar" => send("menu:toggle-sidebar"),
         "shortcuts" => send("menu:shortcuts"),
+        "zoom-in" => crate::zoom::bump(app, 1.0),
+        "zoom-out" => crate::zoom::bump(app, -1.0),
+        "zoom-reset" => crate::zoom::reset(app),
         "help-repo" => {
             use tauri_plugin_opener::OpenerExt;
             let _ = app

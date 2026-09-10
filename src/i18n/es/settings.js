@@ -65,7 +65,10 @@ export default {
       findInNote: 'Buscar en la nota',
       findInAllNotes: 'Buscar en todas las notas',
       toggleSidebar: 'Mostrar/Ocultar barra lateral',
-      settings: 'Ajustes'
+      settings: 'Ajustes',
+      zoomIn: 'Acercar',
+      zoomOut: 'Alejar',
+      zoomReset: 'Tamaño real'
     },
     formatting: {
       title: 'Formato (en el editor)',

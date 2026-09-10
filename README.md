@@ -15,6 +15,7 @@ Free and open source (MIT), no account, no cloud, no telemetry: your notes are f
 - Markdown import and export, per note or **all notes at once**
 - Light and dark theme, follows the system
 - Interface in English, Italian, Spanish, French, German, Portuguese, Chinese and Japanese, follows the system language
+- Zoom the whole interface in and out (View menu, Cmd/Ctrl + / - / 0), remembered across launches
 - Keyboard-first: every action has a shortcut (see Settings → Shortcuts)
 - Small: a Tauri v2 app, native webview, a few MB installed
 

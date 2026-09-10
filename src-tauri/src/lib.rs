@@ -110,6 +110,19 @@ fn set_window_theme(app: AppHandle, dark: bool) -> Result<(), String> {
     Ok(())
 }
 
+/// Geometria della barra del titolo per il CSS (vedi titlebar.rs). Il comando
+/// gira sul main thread (Tauri vi esegue i comandi sincroni su macOS), come
+/// richiesto da AppKit. Fuori da macOS: barra di 38px e nessun semaforo.
+#[tauri::command]
+fn titlebar_geometry(app: AppHandle) -> titlebar::Geometry {
+    app.get_webview_window("main")
+        .and_then(|w| titlebar::geometry(&w))
+        .unwrap_or(titlebar::Geometry {
+            height: 38.0,
+            buttons_end: 0.0,
+        })
+}
+
 // Ricostruisce il menu nativo nella lingua scelta. Chiamato dal frontend
 // all'avvio (con la preferenza salvata) e a ogni cambio lingua.
 #[tauri::command]
@@ -182,6 +195,7 @@ pub fn run() {
             update_check_app_version,
             set_window_theme,
             set_menu_language,
+            titlebar_geometry,
             zoom::zoom_get,
             zoom::zoom_in,
             zoom::zoom_out,

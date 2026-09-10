@@ -79,6 +79,9 @@ export const api = {
   // path null = torna alla predefinita. Risposta: { dir, mode: 'moved'|'adopted'|'unchanged' }
   setDataDir: (path) => invoke('store_set_data_dir', { path }),
 
+  // Geometria della barra del titolo nativa: { height, buttonsEnd } in px.
+  titlebarGeometry: () => invoke('titlebar_geometry'),
+
   // Zoom dell'interfaccia: la logica (passo, limiti, persistenza) sta in
   // Rust (zoom.rs), condivisa col menu nativo. Ogni chiamata ritorna il
   // fattore effettivo; onZoomChanged arriva anche per lo zoom dal menu.

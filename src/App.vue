@@ -219,7 +219,25 @@ function onKeydown(event) {
   if (event.key === 'Escape' && isNarrow.value && ui.sidebarVisible) ui.toggleSidebar()
 }
 
+// Le bande in cima (header, liste, impostazioni) sono alte quanto la barra
+// del titolo nativa e rientrano oltre i semafori: misure che AppKit decide a
+// runtime (vedi src-tauri/src/titlebar.rs), non costanti. Vengono messe in
+// due variabili CSS su :root prima che lo store sia pronto, cioe' mentre e'
+// ancora visibile lo spinner, cosi' non c'e' salto. I fallback nel CSS sono
+// i valori misurati su macOS con SDK 26 (38px, semafori fino a x=66).
+async function applyTitlebarGeometry() {
+  try {
+    const g = await api.titlebarGeometry()
+    const root = document.documentElement.style
+    root.setProperty('--titlebar-h', `${Math.round(g.height)}px`)
+    root.setProperty('--traffic-end', `${Math.round(g.buttonsEnd)}px`)
+  } catch {
+    // fuori da Tauri restano i fallback del CSS
+  }
+}
+
 onMounted(async () => {
+  await applyTitlebarGeometry()
   window.addEventListener('resize', onWindowResize)
   window.addEventListener('keydown', onKeydown)
   onWindowResize() // stato iniziale: la finestra puo' partire gia' stretta
@@ -306,7 +324,7 @@ onBeforeUnmount(() => {
   position: absolute;
   top: 0;
   left: 0;
-  height: 38px;
+  height: var(--titlebar-h, 38px);
   z-index: 10;
 }
 
@@ -361,16 +379,17 @@ onBeforeUnmount(() => {
    pulsanti (indietro, cerca, nuova nota) e questa striscia sta sopra di
    loro, quindi allargandola ne intercetta i click e li rende inerti — non
    c'entrano i drag region, e' l'elemento sovrapposto a ricevere il click.
-   Geometria dei semafori decisa da AppKit con la NSToolbar compatta (vedi
-   src-tauri/src/titlebar.rs, che la logga all'avvio): barra alta 38px,
-   bottoni da x=12 a x=66. Le bande dell'app sono alte 38 per lo stesso
-   motivo: cosi' i semafori risultano centrati per costruzione. */
+   Geometria dei semafori decisa da AppKit (NSToolbar compatta, vedi
+   src-tauri/src/titlebar.rs) e misurata a runtime: --titlebar-h e
+   --traffic-end le imposta applyTitlebarGeometry() qui sopra. Le bande
+   dell'app sono alte quanto la barra per lo stesso motivo: cosi' i semafori
+   risultano centrati per costruzione, qualunque sia la versione di macOS. */
 .browse-drag {
   position: absolute;
   top: 0;
   left: 0;
-  width: 72px;
-  height: 38px;
+  width: calc(var(--traffic-end, 66px) + 6px);
+  height: var(--titlebar-h, 38px);
   z-index: 10;
 }
 

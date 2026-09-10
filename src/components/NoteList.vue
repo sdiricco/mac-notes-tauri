@@ -492,9 +492,9 @@ defineExpose({ openSearch: () => globalSearchRef.value?.openSearch() })
 .note-list-topbar {
   display: flex;
   align-items: center;
-  height: 38px; /* = barra del titolo nativa, vedi titlebar.rs */
+  height: var(--titlebar-h, 38px); /* = barra del titolo nativa, vedi titlebar.rs */
   flex-shrink: 0;
-  padding: 0 12px 0 72px; /* i semafori finiscono a x=66 */
+  padding: 0 12px 0 calc(var(--traffic-end, 66px) + 6px); /* oltre i semafori */
 }
 /* La freccia non si restringe mai: e' l'unico modo di tornare alle
    cartelle. Il margine la stacca dai tre tasti finestra, che le stanno

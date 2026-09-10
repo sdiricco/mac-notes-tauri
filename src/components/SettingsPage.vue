@@ -618,9 +618,9 @@ async function onExportAll() {
    i tre tasti finestra sono disegnati sopra la webview e cadrebbero sulla
    freccia. */
 /* Stesse misure della banda del pannello (.note-list-topbar in NoteList,
-   .sidebar-topbar in Sidebar): altezza 38 come la barra del titolo nativa,
-   rientro 72 per i semafori (finiscono a x=66, vedi titlebar.rs), freccia
-   con 8px di margine e glifo da 16px. La freccia indietro delle impostazioni
+   .sidebar-topbar in Sidebar): alta quanto la barra del titolo nativa e
+   rientrata oltre i semafori, misure in variabili CSS (vedi titlebar.rs e
+   App.vue), freccia con 8px di margine e glifo da 16px. La freccia indietro delle impostazioni
    cade cosi' esattamente sopra quella del pannello, e aprendo le
    impostazioni non "salta". Sfondo --sidebar-bg come l'header dell'editor. */
 .settings-topbar {
@@ -628,8 +628,8 @@ async function onExportAll() {
   display: flex;
   align-items: center;
   gap: 8px;
-  height: 38px;
-  padding: 0 12px 0 72px;
+  height: var(--titlebar-h, 38px);
+  padding: 0 12px 0 calc(var(--traffic-end, 66px) + 6px);
   background: var(--sidebar-bg);
   border-bottom: 1px solid var(--p-content-border-color);
 }

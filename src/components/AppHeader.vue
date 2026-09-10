@@ -76,7 +76,7 @@ const noteTitle = computed(() => store.selectedNote?.title?.trim() || t('common.
 <style scoped>
 .app-header {
   flex-shrink: 0;
-  height: 38px; /* = barra del titolo nativa, vedi titlebar.rs */
+  height: var(--titlebar-h, 38px); /* = barra del titolo nativa, vedi titlebar.rs */
   display: flex;
   align-items: center;
   gap: 10px;
@@ -85,12 +85,12 @@ const noteTitle = computed(() => store.selectedNote?.title?.trim() || t('common.
   border-bottom: 1px solid var(--p-content-border-color);
 }
 
-/* 60px + 12 di padding = 72: i tre semafori finiscono a x=66 (geometria
-   AppKit, vedi titlebar.rs). Serve solo quando l'header e' al bordo sinistro
-   della finestra: con cartelle e lista nel flusso i semafori cadono su quelle
-   (vedi .browse-drag in App.vue). */
+/* Fine dei semafori + 6 di margine - 12 di padding dell'header: geometria
+   AppKit misurata a runtime (vedi titlebar.rs e App.vue). Serve solo quando
+   l'header e' al bordo sinistro della finestra: con cartelle e lista nel
+   flusso i semafori cadono su quelle (vedi .browse-drag in App.vue). */
 .header-left.clears-traffic-lights {
-  padding-left: 60px;
+  padding-left: calc(var(--traffic-end, 66px) - 6px);
 }
 
 /* min-width: 0 permette al titolo della nota di troncarsi invece di

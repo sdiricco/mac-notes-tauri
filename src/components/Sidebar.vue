@@ -335,9 +335,9 @@ function removeFolder(folder) {
 .sidebar-topbar {
   display: flex;
   align-items: center;
-  height: 38px; /* = barra del titolo nativa, vedi titlebar.rs */
+  height: var(--titlebar-h, 38px); /* = barra del titolo nativa, vedi titlebar.rs */
   flex-shrink: 0;
-  padding: 0 12px 0 72px; /* i semafori finiscono a x=66 */
+  padding: 0 12px 0 calc(var(--traffic-end, 66px) + 6px); /* oltre i semafori */
   margin: 0 -8px; /* annulla il padding orizzontale di .sidebar */
 }
 .sidebar-topbar .back-btn {

@@ -30,6 +30,9 @@ export default {
     copyAsMarkdown: '拷贝为 Markdown'
   },
   toolbar: {
+    zoomIn: '放大',
+    zoomOut: '缩小',
+    zoomReset: '实际大小',
     undo: '撤销',
     redo: '重做',
     heading: '标题',

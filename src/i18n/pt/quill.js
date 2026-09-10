@@ -30,6 +30,9 @@ export default {
     copyAsMarkdown: 'Copiar como Markdown'
   },
   toolbar: {
+    zoomIn: 'Ampliar',
+    zoomOut: 'Reduzir',
+    zoomReset: 'Tamanho real',
     undo: 'Desfazer',
     redo: 'Refazer',
     heading: 'Título',

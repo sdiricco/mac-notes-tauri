@@ -280,6 +280,11 @@ pub fn system_lang() -> &'static str {
         .unwrap_or("en")
 }
 
+#[cfg(target_os = "macos")]
+const ZOOM_IN_ACCEL: &str = "CmdOrCtrl+NumpadAdd";
+#[cfg(not(target_os = "macos"))]
+const ZOOM_IN_ACCEL: &str = "CmdOrCtrl+=";
+
 pub fn build_menu(app: &AppHandle, lang: &str) -> tauri::Result<Menu<Wry>> {
     let l = labels(lang);
     let app_menu = SubmenuBuilder::new(app, "RustNotes")
@@ -369,14 +374,12 @@ pub fn build_menu(app: &AppHandle, lang: &str) -> tauri::Result<Menu<Wry>> {
             None::<&str>,
         )?)
         .separator()
-        // "CmdOrCtrl+=" e' il tasto fisico di "+" senza Shift: e' la scelta di
-        // browser ed Electron, cosi' ⌘+ e ⌘= fanno entrambi zoom in.
         .item(&MenuItem::with_id(
             app,
             "zoom-in",
             l.zoom_in,
             true,
-            Some("CmdOrCtrl+="),
+            Some(ZOOM_IN_ACCEL),
         )?)
         .item(&MenuItem::with_id(
             app,
@@ -441,9 +444,15 @@ pub fn handle_menu_event(app: &AppHandle, event_id: &str) {
         "search-all" => send("menu:search-all"),
         "toggle-sidebar" => send("menu:toggle-sidebar"),
         "shortcuts" => send("menu:shortcuts"),
-        "zoom-in" => crate::zoom::bump(app, 1.0),
-        "zoom-out" => crate::zoom::bump(app, -1.0),
-        "zoom-reset" => crate::zoom::reset(app),
+        "zoom-in" => {
+            crate::zoom::bump(app, 1.0);
+        }
+        "zoom-out" => {
+            crate::zoom::bump(app, -1.0);
+        }
+        "zoom-reset" => {
+            crate::zoom::reset(app);
+        }
         "help-repo" => {
             use tauri_plugin_opener::OpenerExt;
             let _ = app

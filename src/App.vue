@@ -203,6 +203,17 @@ watch(
 )
 
 function onKeydown(event) {
+  // Zoom in dalla tastiera principale. L'acceleratore del menu nativo copre
+  // un solo carattere per piattaforma ("+" su macOS, "=" altrove) e consuma
+  // il tasto prima che arrivi qui; il carattere non coperto lo prende questo
+  // handler, cosi' ⌘+ e ⌘= funzionano su ogni layout (menu.rs). Meno e zero
+  // sono gia' del menu su tutti i layout: qui non si toccano, altrimenti
+  // scatterebbero due volte.
+  if ((event.metaKey || event.ctrlKey) && !event.altKey && (event.key === '+' || event.key === '=')) {
+    event.preventDefault()
+    api.zoomIn()
+    return
+  }
   // Con le impostazioni aperte Esc spetta a loro: le chiude SettingsPage.
   if (ui.settingsOpen) return
   if (event.key === 'Escape' && isNarrow.value && ui.sidebarVisible) ui.toggleSidebar()

@@ -138,7 +138,7 @@ pub fn run() {
             // Zoom salvato: riapplicato subito, prima che la pagina si veda.
             let saved = store::zoom_get(&handle);
             if (saved - 1.0).abs() > f64::EPSILON {
-                zoom::apply(&handle, saved);
+                let _ = zoom::apply(&handle, saved);
             }
 
             // Il controllo automatico periodico e' limitato alla build
@@ -177,6 +177,10 @@ pub fn run() {
             update_check_app_version,
             set_window_theme,
             set_menu_language,
+            zoom::zoom_get,
+            zoom::zoom_in,
+            zoom::zoom_out,
+            zoom::zoom_reset,
             file_transfer::export_md,
             file_transfer::export_all_md,
             file_transfer::import_md,

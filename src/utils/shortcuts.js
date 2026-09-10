@@ -17,8 +17,10 @@ const MAC_ORDER = ['alt', 'shift', 'mod']
  * 'mod+shift+X' -> '⇧⌘X' su macOS, 'Ctrl+Shift+X' altrove.
  */
 export function shortcut(combo) {
-  const parts = combo.split('+')
-  const key = parts.pop()
+  // 'mod++' (zoom in): il tasto e' il "+" stesso, che coincide col separatore.
+  const plusKey = combo.endsWith('++')
+  const parts = (plusKey ? combo.slice(0, -2) : combo).split('+')
+  const key = plusKey ? '+' : parts.pop()
   const mods = parts.map((m) => m.toLowerCase())
   if (isMac) {
     return (

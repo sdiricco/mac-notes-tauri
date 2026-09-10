@@ -5,7 +5,7 @@
 //! sposta gli overlay posizionati con getBoundingClientRect. Il livello e'
 //! persistito in config.json (store.rs) e riapplicato all'avvio.
 
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Emitter, Manager};
 
 const STEP: f64 = 0.1;
 const MIN: f64 = 0.5;
@@ -16,25 +16,50 @@ fn clamp(factor: f64) -> f64 {
     ((factor.clamp(MIN, MAX)) * 10.0).round() / 10.0
 }
 
-pub fn apply(app: &AppHandle, factor: f64) {
+/// Applica, salva e notifica il frontend (`zoom:changed`, payload il fattore):
+/// la toolbar mostra la percentuale e deve aggiornarsi anche quando lo zoom
+/// arriva dal menu nativo. Ritorna il fattore effettivo dopo i limiti.
+pub fn apply(app: &AppHandle, factor: f64) -> f64 {
     let factor = clamp(factor);
     if let Some(window) = app.get_webview_window("main") {
         if let Err(e) = window.set_zoom(factor) {
             eprintln!("[rustnotes] zoom ERRORE: {e}");
-            return;
+            return crate::store::zoom_get(app);
         }
     }
     if let Err(e) = crate::store::zoom_set(app, factor) {
         eprintln!("[rustnotes] zoom non salvato: {e}");
     }
+    let _ = app.emit("zoom:changed", factor);
+    factor
 }
 
-pub fn bump(app: &AppHandle, direction: f64) {
-    apply(app, crate::store::zoom_get(app) + direction * STEP);
+pub fn bump(app: &AppHandle, direction: f64) -> f64 {
+    apply(app, crate::store::zoom_get(app) + direction * STEP)
 }
 
-pub fn reset(app: &AppHandle) {
-    apply(app, 1.0);
+pub fn reset(app: &AppHandle) -> f64 {
+    apply(app, 1.0)
+}
+
+#[tauri::command]
+pub fn zoom_get(app: AppHandle) -> f64 {
+    crate::store::zoom_get(&app)
+}
+
+#[tauri::command]
+pub fn zoom_in(app: AppHandle) -> f64 {
+    bump(&app, 1.0)
+}
+
+#[tauri::command]
+pub fn zoom_out(app: AppHandle) -> f64 {
+    bump(&app, -1.0)
+}
+
+#[tauri::command]
+pub fn zoom_reset(app: AppHandle) -> f64 {
+    reset(&app)
 }
 
 #[cfg(test)]

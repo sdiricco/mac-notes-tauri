@@ -30,6 +30,9 @@ export default {
     copyAsMarkdown: 'Markdownとしてコピー'
   },
   toolbar: {
+    zoomIn: '拡大',
+    zoomOut: '縮小',
+    zoomReset: '実際のサイズ',
     undo: '取り消す',
     redo: 'やり直す',
     heading: '見出し',

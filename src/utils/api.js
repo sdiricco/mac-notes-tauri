@@ -77,5 +77,14 @@ export const api = {
   pickFolder: () => invoke('pick_folder', { title: t('app.dialogs.chooseDataDir') }),
   inspectDir: (path) => invoke('store_inspect_dir', { path }),
   // path null = torna alla predefinita. Risposta: { dir, mode: 'moved'|'adopted'|'unchanged' }
-  setDataDir: (path) => invoke('store_set_data_dir', { path })
+  setDataDir: (path) => invoke('store_set_data_dir', { path }),
+
+  // Zoom dell'interfaccia: la logica (passo, limiti, persistenza) sta in
+  // Rust (zoom.rs), condivisa col menu nativo. Ogni chiamata ritorna il
+  // fattore effettivo; onZoomChanged arriva anche per lo zoom dal menu.
+  zoomGet: () => invoke('zoom_get'),
+  zoomIn: () => invoke('zoom_in'),
+  zoomOut: () => invoke('zoom_out'),
+  zoomReset: () => invoke('zoom_reset'),
+  onZoomChanged: (callback) => bridgeEvent('zoom:changed', callback)
 }

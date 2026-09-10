@@ -17,6 +17,8 @@ describe('shortcut', () => {
     expect(shortcut('mod+F')).toBe('⌘F')
     expect(shortcut('shift+mod+F')).toBe('⇧⌘F')
     expect(shortcut('mod+alt+shift+X')).toBe('⌥⇧⌘X')
+    expect(shortcut('mod++')).toBe('⌘+')
+    expect(shortcut('mod+-')).toBe('⌘-')
   })
 
   it('altrove usa Ctrl/Alt/Shift con il piu', async () => {
@@ -24,5 +26,6 @@ describe('shortcut', () => {
     expect(isMac).toBe(false)
     expect(shortcut('mod+F')).toBe('Ctrl+F')
     expect(shortcut('mod+shift+F')).toBe('Ctrl+Shift+F')
+    expect(shortcut('mod++')).toBe('Ctrl++')
   })
 })

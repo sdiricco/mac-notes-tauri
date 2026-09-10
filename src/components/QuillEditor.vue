@@ -11,19 +11,19 @@
         ref="findInputEl"
         v-model="findBar.query"
         type="text"
-        placeholder="Cerca nella nota..."
+        :placeholder="t('quill.findBar.placeholder')"
         @keydown.enter.exact.prevent="nextMatch"
         @keydown.enter.shift.prevent="prevMatch"
         @keydown.esc="closeFindBar"
       />
       <span class="find-bar-count">{{ findBarCountLabel }}</span>
-      <button type="button" title="Precedente" :disabled="!findBar.matches.length" @click="prevMatch">
+      <button type="button" :title="t('quill.findBar.previous')" :disabled="!findBar.matches.length" @click="prevMatch">
         <Icon icon="lucide:chevron-up" />
       </button>
-      <button type="button" title="Successivo" :disabled="!findBar.matches.length" @click="nextMatch">
+      <button type="button" :title="t('quill.findBar.next')" :disabled="!findBar.matches.length" @click="nextMatch">
         <Icon icon="lucide:chevron-down" />
       </button>
-      <button type="button" title="Chiudi" @click="closeFindBar">
+      <button type="button" :title="t('quill.findBar.close')" @click="closeFindBar">
         <Icon icon="lucide:x" />
       </button>
     </div>
@@ -71,7 +71,7 @@
     <div v-if="valuePrompt.visible" class="value-prompt-backdrop" @mousedown.self="cancelValuePrompt">
       <div class="value-prompt" :class="{ 'value-prompt-wide': valuePrompt.kind === 'image' }">
         <template v-if="valuePrompt.kind === 'link'">
-          <div class="value-prompt-label">Testo da visualizzare</div>
+          <div class="value-prompt-label">{{ t('quill.linkPrompt.textLabel') }}</div>
           <!-- Invio qui passa al campo successivo invece di confermare: con
                la conferma immediata dal primo campo il dialogo si chiudeva
                prima che si potesse compilare l'altro. -->
@@ -79,11 +79,11 @@
             ref="valuePromptTextEl"
             v-model="valuePrompt.text"
             type="text"
-            placeholder="(vuoto = usa l'indirizzo)"
+            :placeholder="t('quill.linkPrompt.textPlaceholder')"
             @keydown.enter.prevent="valuePromptUrlEl?.focus()"
             @keydown.esc="cancelValuePrompt"
           />
-          <div class="value-prompt-label value-prompt-label-spaced">Indirizzo del link</div>
+          <div class="value-prompt-label value-prompt-label-spaced">{{ t('quill.linkPrompt.urlLabel') }}</div>
           <input
             ref="valuePromptUrlEl"
             v-model="valuePrompt.url"
@@ -94,19 +94,19 @@
           />
         </template>
         <template v-else>
-          <div class="value-prompt-label">Immagine</div>
+          <div class="value-prompt-label">{{ t('quill.imagePrompt.title') }}</div>
           <div class="value-prompt-image-source">
             <button type="button" class="value-prompt-browse" @click="pickLocalImage">
               <Icon icon="lucide:folder-open" />
-              <span>Scegli file...</span>
+              <span>{{ t('quill.imagePrompt.browse') }}</span>
             </button>
-            <span class="value-prompt-or">oppure incolla un URL o trascina un file qui sotto</span>
+            <span class="value-prompt-or">{{ t('quill.imagePrompt.orPasteOrDrop') }}</span>
           </div>
           <input
             ref="valuePromptUrlEl"
             v-model="valuePrompt.url"
             type="text"
-            placeholder="https://esempio.com/immagine.png"
+            :placeholder="t('quill.imagePrompt.urlPlaceholder')"
             @keydown.enter="confirmValuePrompt"
             @keydown.esc="cancelValuePrompt"
           />
@@ -128,49 +128,49 @@
                 @error="imagePreviewFailed = true"
                 @load="imagePreviewFailed = false"
               />
-              <div v-if="imagePreviewFailed" class="value-prompt-image-error">Anteprima non disponibile</div>
+              <div v-if="imagePreviewFailed" class="value-prompt-image-error">{{ t('quill.imagePrompt.previewUnavailable') }}</div>
               <div v-if="editing.cropping && editing.cropRect" class="value-prompt-crop-box" :style="cropBoxStyle"></div>
             </template>
             <template v-else>
               <div class="value-prompt-image-placeholder">
                 <Icon icon="lucide:image" />
-                <span>Trascina qui un'immagine</span>
+                <span>{{ t('quill.imagePrompt.dropHere') }}</span>
               </div>
             </template>
           </div>
 
           <div v-if="valuePrompt.url && !imagePreviewFailed" class="value-prompt-image-tools">
             <template v-if="!editing.cropping">
-              <button type="button" title="Ruota a sinistra" :disabled="editing.busy" @click="rotate(-90)">
+              <button type="button" :title="t('quill.imagePrompt.rotateLeft')" :disabled="editing.busy" @click="rotate(-90)">
                 <Icon icon="lucide:rotate-ccw" />
               </button>
-              <button type="button" title="Ruota a destra" :disabled="editing.busy" @click="rotate(90)">
+              <button type="button" :title="t('quill.imagePrompt.rotateRight')" :disabled="editing.busy" @click="rotate(90)">
                 <Icon icon="lucide:rotate-cw" />
               </button>
-              <button type="button" title="Ritaglia" :disabled="editing.busy" @click="startCrop">
+              <button type="button" :title="t('quill.imagePrompt.crop')" :disabled="editing.busy" @click="startCrop">
                 <Icon icon="lucide:crop" />
               </button>
               <span class="value-prompt-tools-sep"></span>
-              <span class="value-prompt-tools-label">Ridimensiona</span>
+              <span class="value-prompt-tools-label">{{ t('quill.imagePrompt.resize') }}</span>
               <button type="button" :disabled="editing.busy" @click="scaleBy(0.75)">75%</button>
               <button type="button" :disabled="editing.busy" @click="scaleBy(0.5)">50%</button>
             </template>
             <template v-else>
-              <span class="value-prompt-tools-label">Trascina per selezionare l'area da ritagliare</span>
+              <span class="value-prompt-tools-label">{{ t('quill.imagePrompt.cropHint') }}</span>
               <div class="value-prompt-actions-spacer"></div>
-              <button type="button" @click="cancelCrop">Annulla</button>
+              <button type="button" @click="cancelCrop">{{ t('quill.prompt.cancel') }}</button>
               <button type="button" class="value-prompt-ok" :disabled="!editing.cropRect || editing.busy" @click="applyCrop">
-                Applica ritaglio
+                {{ t('quill.imagePrompt.applyCrop') }}
               </button>
             </template>
           </div>
           <div v-if="editing.error" class="value-prompt-image-error value-prompt-image-error-inline">{{ editing.error }}</div>
         </template>
         <div class="value-prompt-actions">
-          <button v-if="valuePrompt.editing" class="value-prompt-remove" @click="removeValueLink">Rimuovi link</button>
+          <button v-if="valuePrompt.editing" class="value-prompt-remove" @click="removeValueLink">{{ t('quill.linkPrompt.removeLink') }}</button>
           <div class="value-prompt-actions-spacer"></div>
-          <button class="value-prompt-cancel" @click="cancelValuePrompt">Annulla</button>
-          <button class="value-prompt-ok" @click="confirmValuePrompt">Conferma</button>
+          <button class="value-prompt-cancel" @click="cancelValuePrompt">{{ t('quill.prompt.cancel') }}</button>
+          <button class="value-prompt-ok" @click="confirmValuePrompt">{{ t('quill.prompt.confirm') }}</button>
         </div>
       </div>
     </div>
@@ -242,6 +242,7 @@ import hljs from 'highlight.js/lib/common'
 import 'quill/dist/quill.snow.css'
 import { Icon } from '@iconify/vue'
 import { useToast } from 'primevue/usetoast'
+import { useI18n } from 'vue-i18n'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { useSettingsStore } from '../stores/settings'
 import { api } from '../utils/api'
@@ -252,6 +253,7 @@ import '@cyhnkckali/vue3-color-picker/dist/style.css'
 
 const settings = useSettingsStore()
 const toast = useToast()
+const { t, locale } = useI18n()
 
 const props = defineProps({
   noteId: { type: String, default: null },
@@ -299,37 +301,37 @@ const INLINE_CODE_ICON = `
 
 // Azioni sulla tabella (righe/colonne): esposte tramite menu contestuale al
 // tasto destro su una cella (vedi openTableMenu), non nella toolbar.
-const TABLE_ACTIONS = [
-  { value: 'insertRowAbove', label: 'Inserisci riga sopra' },
-  { value: 'insertRowBelow', label: 'Inserisci riga sotto' },
-  { value: 'insertColumnLeft', label: 'Inserisci colonna a sinistra' },
-  { value: 'insertColumnRight', label: 'Inserisci colonna a destra' },
-  { value: 'deleteRow', label: 'Elimina riga' },
-  { value: 'deleteColumn', label: 'Elimina colonna' },
-  { value: 'deleteTable', label: 'Elimina tabella' }
-]
+const TABLE_ACTIONS = computed(() => [
+  { value: 'insertRowAbove', label: t('quill.table.insertRowAbove') },
+  { value: 'insertRowBelow', label: t('quill.table.insertRowBelow') },
+  { value: 'insertColumnLeft', label: t('quill.table.insertColumnLeft') },
+  { value: 'insertColumnRight', label: t('quill.table.insertColumnRight') },
+  { value: 'deleteRow', label: t('quill.table.deleteRow') },
+  { value: 'deleteColumn', label: t('quill.table.deleteColumn') },
+  { value: 'deleteTable', label: t('quill.table.deleteTable') }
+])
 
 // Menu contestuale al tasto destro nel corpo della nota (fuori da una
 // tabella, vedi onEditorContextMenu): tre gruppi, appunti/formattazione/
 // extra, eseguiti da runContextAction. Gli stessi cinque stili raggruppati
 // sotto "Aa" nella toolbar compatta, più link e un'azione di convenienza.
-const EDITOR_CONTEXT_ACTIONS = [
+const EDITOR_CONTEXT_ACTIONS = computed(() => [
   [
-    { value: 'cut', label: 'Taglia', icon: 'lucide:scissors' },
-    { value: 'copy', label: 'Copia', icon: 'lucide:copy' },
-    { value: 'paste', label: 'Incolla', icon: 'lucide:clipboard-paste' },
-    { value: 'paste-plain', label: 'Incolla senza formattazione', icon: 'lucide:clipboard-type' }
+    { value: 'cut', label: t('quill.contextMenu.cut'), icon: 'lucide:scissors' },
+    { value: 'copy', label: t('quill.contextMenu.copy'), icon: 'lucide:copy' },
+    { value: 'paste', label: t('quill.contextMenu.paste'), icon: 'lucide:clipboard-paste' },
+    { value: 'paste-plain', label: t('quill.contextMenu.pastePlain'), icon: 'lucide:clipboard-type' }
   ],
   [
-    { value: 'bold', label: 'Grassetto', icon: 'lucide:bold' },
-    { value: 'italic', label: 'Corsivo', icon: 'lucide:italic' },
-    { value: 'underline', label: 'Sottolineato', icon: 'lucide:underline' },
-    { value: 'strike', label: 'Barrato', icon: 'lucide:strikethrough' },
-    { value: 'code', label: 'Codice inline', icon: 'lucide:code' },
-    { value: 'link', label: 'Link...', icon: 'lucide:link' }
+    { value: 'bold', label: t('quill.contextMenu.bold'), icon: 'lucide:bold' },
+    { value: 'italic', label: t('quill.contextMenu.italic'), icon: 'lucide:italic' },
+    { value: 'underline', label: t('quill.contextMenu.underline'), icon: 'lucide:underline' },
+    { value: 'strike', label: t('quill.contextMenu.strike'), icon: 'lucide:strikethrough' },
+    { value: 'code', label: t('quill.contextMenu.inlineCode'), icon: 'lucide:code' },
+    { value: 'link', label: t('quill.contextMenu.link'), icon: 'lucide:link' }
   ],
-  [{ value: 'copy-markdown', label: 'Copia come Markdown', icon: 'lucide:clipboard-list' }]
-]
+  [{ value: 'copy-markdown', label: t('quill.contextMenu.copyAsMarkdown'), icon: 'lucide:clipboard-list' }]
+])
 
 const toolbarOptions = [
   [{ header: [1, 2, 3, false] }],
@@ -427,9 +429,11 @@ const G_ALIGN = group(
 const G_INSERT = group(btn('ql-link'), btn('ql-code-block'), btn('ql-image'), btn('ql-table'))
 const G_CLEAN = group(btn('ql-clean'))
 
-const dropdown = (name, icon, tip, ...groups) => `
+// Il tooltip (data-tooltip/aria-label) del toggle non è nel markup: lo mette
+// applyToolbarTooltips come per gli altri controlli, così segue la lingua.
+const dropdown = (name, icon, ...groups) => `
   <span class="ql-formats toolbar-dropdown ${name}">
-    <button type="button" class="toolbar-dropdown-toggle ${name}-toggle" data-tooltip="${tip}" aria-label="${tip}">${icon}</button>
+    <button type="button" class="toolbar-dropdown-toggle ${name}-toggle">${icon}</button>
     <div class="toolbar-dropdown-panel ${name}-panel">${groups.join('')}</div>
   </span>
 `
@@ -473,8 +477,8 @@ const HIGHLIGHT_ICON = `
 // componente Vue (Vue3ColorPicker, vedi <template>), non ottenibile con le
 // stringhe HTML imperative usate per il resto della toolbar. Il bottone
 // apre/chiude direttamente l'overlay Vue — vedi openColorPicker più sotto.
-const colorDropdown = () => dropdown('color-dropdown', COLOR_ICON, 'Colore testo')
-const highlightDropdown = () => dropdown('highlight-dropdown', HIGHLIGHT_ICON, 'Evidenziazione')
+const colorDropdown = () => dropdown('color-dropdown', COLOR_ICON)
+const highlightDropdown = () => dropdown('highlight-dropdown', HIGHLIGHT_ICON)
 
 // Palette usata solo per pre-popolare la cronologia di Vue3ColorPicker al
 // primo avvio (vedi hasUsableColorList sotto) — non c'è più una griglia di
@@ -539,31 +543,35 @@ const TOOLBAR_HTML =
 // sola chiave per classe ne avrebbe avuto il tooltip solo il primo.
 // Testi brevi per scelta: nome del controllo piu' la scorciatoia, niente
 // spiegazioni — sono etichette, non documentazione.
-const TOOLBAR_TOOLTIPS = [
-  ['button.ql-undo', `Annulla (${shortcut('mod+Z')})`],
-  ['button.ql-redo', `Ripeti (${shortcut('mod+shift+Z')})`],
-  ['.ql-header .ql-picker-label', 'Titolo'],
-  ['button.ql-list[value="bullet"]', `Elenco puntato (${shortcut('mod+shift+8')})`],
-  ['button.ql-list[value="ordered"]', `Elenco numerato (${shortcut('mod+shift+7')})`],
-  ['button.ql-list[value="check"]', `Elenco di controllo (${shortcut('mod+shift+9')})`],
-  ['button.ql-blockquote', `Citazione (${shortcut('mod+shift+B')})`],
-  ['button.ql-bold', `Grassetto (${shortcut('mod+B')})`],
-  ['button.ql-italic', `Corsivo (${shortcut('mod+I')})`],
-  ['button.ql-underline', `Sottolineato (${shortcut('mod+U')})`],
-  ['button.ql-strike', `Barrato (${shortcut('mod+shift+X')})`],
-  ['button.ql-code', `Codice (${shortcut('mod+E')})`],
-  ['button.ql-script[value="super"]', 'Apice'],
-  ['button.ql-script[value="sub"]', 'Pedice'],
-  ['button.ql-align[value=""]', 'Allinea a sinistra'],
-  ['button.ql-align[value="center"]', 'Centra'],
-  ['button.ql-align[value="right"]', 'Allinea a destra'],
-  ['button.ql-align[value="justify"]', 'Giustifica'],
-  ['button.ql-link', `Link (${shortcut('mod+K')})`],
-  ['button.ql-code-block', `Blocco codice (${shortcut('mod+shift+C')})`],
-  ['button.ql-image', 'Immagine'],
-  ['button.ql-table', 'Tabella'],
-  ['button.ql-clean', 'Rimuovi formato']
-]
+// Computed e non costante: le etichette cambiano con la lingua, e vengono
+// riapplicate al DOM dal watch su `locale` più sotto.
+const TOOLBAR_TOOLTIPS = computed(() => [
+  ['button.ql-undo', `${t('quill.toolbar.undo')} (${shortcut('mod+Z')})`],
+  ['button.ql-redo', `${t('quill.toolbar.redo')} (${shortcut('mod+shift+Z')})`],
+  ['.ql-header .ql-picker-label', t('quill.toolbar.heading')],
+  ['button.ql-list[value="bullet"]', `${t('quill.toolbar.bulletList')} (${shortcut('mod+shift+8')})`],
+  ['button.ql-list[value="ordered"]', `${t('quill.toolbar.orderedList')} (${shortcut('mod+shift+7')})`],
+  ['button.ql-list[value="check"]', `${t('quill.toolbar.checkList')} (${shortcut('mod+shift+9')})`],
+  ['button.ql-blockquote', `${t('quill.toolbar.blockquote')} (${shortcut('mod+shift+B')})`],
+  ['button.ql-bold', `${t('quill.toolbar.bold')} (${shortcut('mod+B')})`],
+  ['button.ql-italic', `${t('quill.toolbar.italic')} (${shortcut('mod+I')})`],
+  ['button.ql-underline', `${t('quill.toolbar.underline')} (${shortcut('mod+U')})`],
+  ['button.ql-strike', `${t('quill.toolbar.strike')} (${shortcut('mod+shift+X')})`],
+  ['button.ql-code', `${t('quill.toolbar.code')} (${shortcut('mod+E')})`],
+  ['.color-dropdown-toggle', t('quill.toolbar.textColor')],
+  ['.highlight-dropdown-toggle', t('quill.toolbar.highlight')],
+  ['button.ql-script[value="super"]', t('quill.toolbar.superscript')],
+  ['button.ql-script[value="sub"]', t('quill.toolbar.subscript')],
+  ['button.ql-align[value=""]', t('quill.toolbar.alignLeft')],
+  ['button.ql-align[value="center"]', t('quill.toolbar.alignCenter')],
+  ['button.ql-align[value="right"]', t('quill.toolbar.alignRight')],
+  ['button.ql-align[value="justify"]', t('quill.toolbar.alignJustify')],
+  ['button.ql-link', `${t('quill.toolbar.link')} (${shortcut('mod+K')})`],
+  ['button.ql-code-block', `${t('quill.toolbar.codeBlock')} (${shortcut('mod+shift+C')})`],
+  ['button.ql-image', t('quill.toolbar.image')],
+  ['button.ql-table', t('quill.toolbar.table')],
+  ['button.ql-clean', t('quill.toolbar.clearFormatting')]
+])
 
 const tooltip = reactive({ visible: false, text: '', top: '0px', left: '0px' })
 
@@ -595,7 +603,7 @@ function onToolbarPointerOver(event) {
 
 function applyToolbarTooltips(container) {
   if (!container) return
-  TOOLBAR_TOOLTIPS.forEach(([selector, tip]) => {
+  TOOLBAR_TOOLTIPS.value.forEach(([selector, tip]) => {
     container.querySelectorAll(selector).forEach((el) => {
       el.setAttribute('data-tooltip', tip)
       el.setAttribute('aria-label', tip)
@@ -604,8 +612,12 @@ function applyToolbarTooltips(container) {
 }
 
 // chiavi = nomi canonici di highlight.js (coerenti con normalizeLang in markdown.js)
+// Array mutabile e non computed: Quill lo legge (options.languages) ogni
+// volta che monta il <select> di un code block, quindi al cambio lingua basta
+// aggiornare la voce "plain" qui e nei <select> già presenti (vedi il watch
+// su `locale` più sotto). Le altre etichette sono nomi propri, non tradotte.
 const CODE_LANGUAGES = [
-  { key: 'plain', label: 'Testo' },
+  { key: 'plain', label: t('quill.codeLanguages.plain') },
   { key: 'javascript', label: 'JavaScript' },
   { key: 'typescript', label: 'TypeScript' },
   { key: 'python', label: 'Python' },
@@ -654,9 +666,8 @@ const imagePreviewFailed = ref(false)
 const imagePreviewSrc = ref('')
 const LinkFormat = Quill.import('formats/link')
 
-const IMAGE_TOO_LARGE_MSG = 'Immagine troppo grande (limite 8MB): scegline una più piccola o comprimila prima di aggiungerla.'
-const IMAGE_READ_FAILED_MSG = 'Impossibile leggere questo file.'
-const errorMessageFor = (code) => (code === 'too-large' ? IMAGE_TOO_LARGE_MSG : IMAGE_READ_FAILED_MSG)
+const errorMessageFor = (code) =>
+  code === 'too-large' ? t('quill.imagePrompt.tooLarge') : t('quill.imagePrompt.readFailed')
 
 // Il renderer dev è servito da http://localhost:5173, non file://: Chromium
 // blocca il caricamento di risorse file:// da un'origine http (e per coerenza
@@ -713,8 +724,6 @@ function loadImageElement(src) {
   })
 }
 
-const CANVAS_ERROR = 'Impossibile modificare questa immagine (probabilmente remota e senza permesso CORS).'
-
 async function withImageEdit(transform) {
   editing.busy = true
   editing.error = ''
@@ -723,7 +732,7 @@ async function withImageEdit(transform) {
     const canvas = transform(img)
     valuePrompt.url = canvas.toDataURL('image/png')
   } catch {
-    editing.error = CANVAS_ERROR
+    editing.error = t('quill.imagePrompt.canvasError')
   } finally {
     editing.busy = false
   }
@@ -982,7 +991,7 @@ function onEditorClick(event) {
     openUrl(url).catch(() => {
       toast.add({
         severity: 'warn',
-        summary: 'Impossibile aprire il link',
+        summary: t('quill.toast.cannotOpenLink'),
         detail: url,
         life: 2600
       })
@@ -1016,7 +1025,8 @@ const findBar = reactive({ visible: false, query: '', matches: [], currentIndex:
 
 const findBarCountLabel = computed(() => {
   if (!findBar.query.trim()) return ''
-  return findBar.matches.length ? `${findBar.currentIndex + 1}/${findBar.matches.length}` : '0/0'
+  const total = findBar.matches.length
+  return t('quill.findBar.count', { current: total ? findBar.currentIndex + 1 : 0, total })
 })
 
 function computeMatches(query) {
@@ -1244,7 +1254,7 @@ async function runContextAction(value) {
       // criterio di "cosa copio" che ci si aspetterebbe da un tasto destro.
       const html = range?.length ? quill.getSemanticHTML(range.index, range.length) : quill.getSemanticHTML()
       navigator.clipboard.writeText(htmlToMarkdown(html))
-      toast.add({ severity: 'success', summary: 'Copiato come Markdown', life: 1800 })
+      toast.add({ severity: 'success', summary: t('quill.toast.copiedAsMarkdown'), life: 1800 })
       break
     }
   }
@@ -1494,6 +1504,19 @@ function applySpellcheck() {
 }
 
 watch(() => [settings.spellcheck, settings.spellLang], applySpellcheck)
+
+// Cambio lingua: i testi che vivono nel DOM gestito da Quill (tooltip della
+// toolbar, opzione "Testo" dei <select> dei code block) non sono reattivi da
+// soli e vanno riapplicati a mano.
+watch(locale, () => {
+  if (!quill) return
+  applyToolbarTooltips(quill.getModule('toolbar').container)
+  const plain = CODE_LANGUAGES.find((l) => l.key === 'plain')
+  if (plain) plain.label = t('quill.codeLanguages.plain')
+  quill.root.querySelectorAll('.ql-code-block-container select.ql-ui option[value="plain"]').forEach((opt) => {
+    opt.textContent = plain?.label ?? opt.textContent
+  })
+})
 
 watch(
   () => props.noteId,

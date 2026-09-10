@@ -5,6 +5,7 @@
 
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
+import { t } from '../i18n'
 
 // `listen()` è asincrono (ritorna una Promise<UnlistenFn>), ma tutti i
 // chiamanti in questo progetto si aspettano una funzione di cleanup
@@ -50,10 +51,31 @@ export const api = {
   getAppVersion: () => invoke('update_check_app_version'),
   onUpdateCheckStatus: (callback) => bridgeEvent('update-check:status', callback),
 
+  // I dialoghi nativi vivono in Rust, fuori da vue-i18n: il titolo viene
+  // tradotto qui e passato come parametro, cosi' i componenti non se ne
+  // occupano e il menu/dialogo segue la lingua dell'app.
   exportMarkdown: (markdown, suggestedName) =>
-    invoke('export_md', { markdown, suggestedName }),
-  importMarkdown: () => invoke('import_md'),
-  pickImage: () => invoke('pick_image'),
+    invoke('export_md', { markdown, suggestedName, title: t('app.dialogs.exportMarkdown') }),
+  // files: [{ folder: string|null, name: string, markdown: string }]
+  exportAllMarkdown: (files) =>
+    invoke('export_all_md', {
+      files,
+      title: t('app.dialogs.exportAll'),
+      fallbackName: t('common.untitledNote')
+    }),
+  importMarkdown: () => invoke('import_md', { title: t('app.dialogs.importMarkdown') }),
+  pickImage: () =>
+    invoke('pick_image', {
+      title: t('app.dialogs.pickImage'),
+      filterLabel: t('app.dialogs.imagesFilter')
+    }),
   readLocalImage: (filePath) => invoke('read_local_image', { filePath }),
-  revealDataFile: () => invoke('store_reveal_in_finder')
+  revealDataFile: () => invoke('store_reveal_in_finder'),
+
+  // Cartella dati a scelta dell'utente (Impostazioni > Informazioni > Dati).
+  getDataDirInfo: () => invoke('store_data_dir_info'),
+  pickFolder: () => invoke('pick_folder', { title: t('app.dialogs.chooseDataDir') }),
+  inspectDir: (path) => invoke('store_inspect_dir', { path }),
+  // path null = torna alla predefinita. Risposta: { dir, mode: 'moved'|'adopted'|'unchanged' }
+  setDataDir: (path) => invoke('store_set_data_dir', { path })
 }

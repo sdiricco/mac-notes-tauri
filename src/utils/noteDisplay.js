@@ -1,4 +1,5 @@
 import { stripHtml } from './markdown'
+import { t, currentLocale } from '../i18n'
 
 // Formato e anteprima delle note come li mostra la lista. Stanno qui perche'
 // li usano piu' punti (la lista, il menu del breadcrumb e il pannello di
@@ -12,13 +13,13 @@ export function formatNoteDate(timestamp) {
   const date = new Date(timestamp)
   const isToday = date.toDateString() === new Date().toDateString()
   return isToday
-    ? date.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })
-    : date.toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' })
+    ? date.toLocaleTimeString(currentLocale(), { hour: '2-digit', minute: '2-digit' })
+    : date.toLocaleDateString(currentLocale(), { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
 // Testo semplice del contenuto, per la riga di anteprima. Il fallback evita
 // una riga vuota che farebbe "saltare" l'altezza delle voci nell'elenco.
 export function notePreview(content) {
   const text = stripHtml(content)
-  return text.length ? text : 'Nessun testo aggiuntivo'
+  return text.length ? text : t('store.noPreview')
 }

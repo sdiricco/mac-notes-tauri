@@ -1,95 +1,140 @@
-# mac-notes-tauri
+# RustNotes
 
-Porting di [mac-notes](https://github.com/sdiricco/mac-notes) da Electron a
-Tauri v2. Frontend Vue **invariato** (a parte un file), backend riscritto in
-Rust.
+A simple, local-first notes app in the spirit of Apple Notes, for macOS, Windows and Linux.
+Free and open source (MIT), no account, no cloud, no telemetry: your notes are files on your disk.
 
-## Stato
+> **Status: early.** Version 0.9.x. macOS is used daily by the author; Windows and
+> Linux builds are produced by CI but have **not yet been run by a human**. See
+> [Known limitations](#known-limitations) before you rely on it.
 
-**Verificato via log + file su disco**: crea/salva/carica note, persistenza
-identica all'originale (una nota per file JSON in
-`~/Library/Application Support/<identifier>/notes/`), sopravvive al riavvio.
+## Features
 
-**Compila e gira, non ancora esercitato manualmente**: dialoghi nativi
-(export/import markdown, scelta immagine — richiedono un click reale, non
-automatizzabile da qui) e menu nativo. Vedi [CHECKLIST.md](CHECKLIST.md) per
-cosa provare e perché proprio quei punti contano (uno in particolare: i
-dialoghi usano l'API *blocking* di Tauri dentro comandi `async`, un pattern
-comune ma non ancora verificato empiricamente su questa versione).
+- Folders, favorites, trash, multi-select, drag to reorder folders
+- Rich text editor (Quill) with headings, lists, checklists, code blocks with syntax highlighting, tables, images
+- Instant full-text search across all notes, find inside a note
+- Markdown import and export, per note or **all notes at once**
+- Light and dark theme, follows the system
+- Interface in English, Italian, Spanish, French, German, Portuguese, Chinese and Japanese, follows the system language
+- Keyboard-first: every action has a shortcut (see Settings → Shortcuts)
+- Small: a Tauri v2 app, native webview, a few MB installed
 
-## Cosa è stato portato
+## Install
 
-| Originale (Electron) | Qui (Tauri) | File |
-|---|---|---|
-| `src/main/store.js` | `store.rs` | comandi `store_*` |
-| `src/main/fileTransfer.js` | `file_transfer.rs` | `export_md`, `import_md`, `pick_image`, `read_local_image` |
-| `src/main/menu.js` | `menu.rs` | menu nativo via `tauri::menu` |
-| `src/main/updateCheck.js` | `update_check.rs` | stessa logica: solo GET pubblico a GitHub Releases, nessun keypair |
-| `src/preload/index.js` + `utils/api.js` | `utils/api.js` (riscritto) | unico file frontend toccato |
-| `src/renderer/src/**` | `src/**` | **copiato verbatim**, zero righe modificate |
-
-## Gap noti, dichiarati non nascosti
-
-- **Menu → Vista**: Reload / Toggle DevTools / Zoom in-out-reset non hanno un
-  `PredefinedMenuItem` equivalente in Tauri (sono `role` Electron legati alla
-  `BrowserWindow`). Omessi per ora.
-- **Menu → Finestra**: "Porta tutto in primo piano" (`role: front`) omesso,
-  non ha equivalente diretto.
-- **Nessuna migrazione dati**: le note esistenti in mac-notes (Electron) non
-  vengono importate. Identifier diverso (`com.movesolutions.macnotestauri`)
-  → cartella dati diversa. Deciso esplicitamente: non interessa in questa fase.
-- **Immagini come data URI**, non asset protocol Tauri: portato identico
-  all'originale per zero modifiche al frontend. Da rivalutare — l'asset
-  protocol eliminerebbe il limite di 8 MB.
-
-## Editor in WKWebView
-
-Prima di questo porting è stato verificato separatamente se Quill si comporta
-bene in WKWebView (vedi `../editor-spike`). Risultato: sì, alla prova pratica.
-
-## Installazione (macOS, via Homebrew)
-
-Stesso meccanismo di [mac-notes](https://github.com/sdiricco/mac-notes): un
-cask nel tap personale, aggiornamento manuale da terminale, nessun
-autoupdater — il controllo versione in-app (`update_check.rs`) si limita ad
-avvisare che è disponibile una nuova release.
+### macOS (Homebrew)
 
 ```bash
 brew tap sdiricco/mac-notes
 brew install --cask mac-notes-tauri
 ```
 
-Aggiornamento:
+Upgrade with `brew upgrade --cask mac-notes-tauri`.
+
+The app is **not signed with an Apple Developer ID**. On first launch macOS says the
+developer cannot be verified. Right-click the app → Open, or from a terminal:
 
 ```bash
-brew upgrade --cask mac-notes-tauri
+xattr -dr com.apple.quarantine "/Applications/RustNotes.app"
 ```
 
-L'app non è firmata con un certificato Apple Developer ID: al primo avvio
-macOS mostra "sviluppatore non verificato". Tasto destro sull'app → Apri,
-oppure da terminale:
+### Windows and Linux
+
+Download the installer for your platform from the
+[Releases](https://github.com/sdiricco/mac-notes-tauri/releases) page
+(NSIS `.exe` for Windows, `.AppImage` / `.deb` for Linux, x64 and arm64).
+
+Windows will show a SmartScreen warning because the installer is not code-signed.
+There is no in-app updater yet: download the new installer at each release.
+The app checks GitHub Releases and tells you when a newer version exists.
+
+## Your data
+
+Notes live on your disk, one JSON file per note plus a `folders.json`, in the
+platform's application data directory (Settings → About → *Show in Finder* opens it):
+
+| OS | Path |
+|---|---|
+| macOS | `~/Library/Application Support/io.github.sdiricco.rustnotes/` |
+| Windows | `%APPDATA%\io.github.sdiricco.rustnotes\` |
+| Linux | `~/.local/share/io.github.sdiricco.rustnotes/` |
+
+Upgrading from a 0.9.x build (then called "Mac Notes Tauri"): the data directory
+changed with the name. On first launch the app copies your notes from the old
+directory if the new one is empty; the old one is left in place as a backup.
+
+Each note file holds the note's HTML content, title, folder, timestamps and flags.
+Images are embedded as data URIs (8 MB limit per image).
+
+You can **move the notes folder anywhere** from Settings → About → Data → *Change…*.
+Point it at a folder synced by iCloud Drive, Dropbox or Syncthing and the same
+notes are available on every computer that points at it: the app has no sync of
+its own, and does not need one. If the folder you pick already contains a
+RustNotes archive, the app switches to it instead of moving your current notes
+(this is how you connect a second computer). The choice is stored in
+`config.json` inside the default directory above. If the chosen folder is missing
+at startup (external disk unplugged) the app falls back to the default one.
+
+To get everything out as plain Markdown: Settings → About → **Export all notes**.
+It writes one `.md` file per note, one subfolder per folder.
+
+Nothing ever leaves your machine except one anonymous `GET` to the GitHub Releases
+API to check for a newer version.
+
+## Known limitations
+
+Documented rather than hidden. Decisions, not oversights:
+
+- **Not code-signed** (macOS Gatekeeper / Windows SmartScreen warnings). Certificates
+  cost money every year; the project is free and stays free. Instructions above.
+- **Windows and Linux are untested by a human.** They compile in CI. The header is
+  designed around macOS traffic lights and may show an empty strip on other OSes.
+  Reports and screenshots are very welcome.
+- **No auto-update** outside Homebrew. A minisign-based updater (no certificate
+  needed) is on the list.
+- **No sync of its own.** By design there is no account or server. Put the notes
+  folder inside iCloud Drive, Dropbox or Syncthing (see *Your data*). Two
+  computers editing the same note at the same time will conflict the way any
+  synced file does: last write wins.
+- **Storage format is HTML in JSON**, not Markdown files. Markdown is a first-class
+  export, not the storage. Switching is under evaluation; the round trip through
+  Markdown is lossy for some rich content.
+- **Flat folders**, no nesting or tags yet.
+
+## Development
+
+Requirements: Node 20+, pnpm 10, Rust stable, and the
+[Tauri v2 prerequisites](https://v2.tauri.app/start/prerequisites/) for your OS.
 
 ```bash
-xattr -dr com.apple.quarantine "/Applications/Mac Notes Tauri.app"
+pnpm install
+pnpm tauri dev
 ```
 
-## Windows e Linux
-
-Le build sono generate automaticamente dalla stessa release (installer NSIS
-per Windows, AppImage/deb per Linux — vedi
-[Releases](https://github.com/sdiricco/mac-notes-tauri/releases)), ma **non
-sono ancora state aperte su queste piattaforme**: compilano, non sono
-verificate. Nessun meccanismo di aggiornamento da terminale per ora — vanno
-scaricate a mano a ogni versione.
-
-## Sviluppo
+Tests and checks (the same ones CI runs on every push and pull request):
 
 ```bash
-source "$HOME/.cargo/env" && pnpm tauri dev
+pnpm exec vue-tsc --noEmit   # typecheck
+pnpm test                    # frontend unit tests (vitest)
+cd src-tauri && cargo test && cargo clippy --all-targets -- -D warnings && cargo fmt --check
 ```
 
-Release: pusha un tag `vX.Y.Z` — la pipeline builda tutte le piattaforme e
-crea una **release in bozza** (`releaseDraft: true`). Il controllo
-aggiornamenti in-app legge solo l'endpoint "latest release" di GitHub, che
-ignora le bozze: finché non la pubblichi a mano dalla pagina Releases, nessun
-utente la vede. Prima di pubblicare, aggiorna anche il Cask (vedi sotto).
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the layout of the code, how i18n works
+and how to add a language.
+
+## Release
+
+Push a tag `vX.Y.Z`. The release workflow builds macOS (universal), Windows
+(x64, arm64) and Linux (x64, arm64) and creates a **draft** GitHub release. The
+in-app update check reads only the "latest release" endpoint, which ignores drafts:
+nobody sees a version until you publish it from the Releases page. Update the
+Homebrew cask in the tap at the same time.
+
+## History
+
+RustNotes started as [mac-notes](https://github.com/sdiricco/mac-notes), an
+Electron app, and was ported to Tauri v2 with the Vue frontend left almost
+untouched and the backend rewritten in Rust. The GitHub repository still carries
+the porting-era name `mac-notes-tauri`.
+
+## License
+
+[MIT](LICENSE) © Simone Di Ricco

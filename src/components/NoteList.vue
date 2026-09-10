@@ -11,14 +11,14 @@
     <div class="note-list-topbar">
       <!-- Freccia indietro: porta il pannello alla vista cartelle. E' un solo
            pannello con due viste, non due affiancati. -->
-      <button class="icon-btn back-btn" title="Cartelle" @click="ui.showFolders()">
+      <button class="icon-btn back-btn" :title="t('list.folders')" @click="ui.showFolders()">
         <Icon icon="lucide:arrow-left" />
       </button>
       <!-- Avanti disabilitato: le note sono l'ultimo livello, non c'e' nulla
            oltre. Presente comunque perche' la coppia avanti/indietro sta in
            entrambe le viste: sparendo, i pulsanti accanto ballerebbero di
            posizione al cambio vista. -->
-      <button class="icon-btn" title="Note" disabled>
+      <button class="icon-btn" :title="t('store.notes')" disabled>
         <Icon icon="lucide:arrow-right" />
       </button>
 
@@ -31,7 +31,7 @@
       <button
         v-if="!store.isTrashView"
         class="icon-btn create-btn"
-        title="Nuova nota"
+        :title="t('list.newNote')"
         @click="store.createNote()"
       >
         <Icon icon="lucide:square-pen" />
@@ -39,7 +39,7 @@
       <button
         v-else
         class="icon-btn danger create-btn"
-        title="Svuota cestino"
+        :title="t('list.emptyTrash')"
         :disabled="store.trashCount === 0"
         @click="confirmEmptyTrash"
       >
@@ -59,16 +59,16 @@
         <button
           v-if="store.visibleNotes.length"
           class="icon-btn"
-          title="Seleziona note"
+          :title="t('list.selectNotes')"
           @click="enterSelectionMode"
         >
           <Icon icon="lucide:list-checks" />
         </button>
-        <button class="sort-bar select-mode-btn" title="Ordina e filtra" @click="sortMenu.toggle($event)">
+        <button class="sort-bar select-mode-btn" :title="t('list.sortAndFilter')" @click="sortMenu.toggle($event)">
           <Icon :icon="settings.sortDir === 'asc' ? 'lucide:arrow-up-narrow-wide' : 'lucide:arrow-down-wide-narrow'" />
           <span class="sort-current">{{ sortLabel }}</span>
           <span v-if="settings.pinnedOnly" class="sort-filter">
-            <Icon icon="lucide:star" /> preferiti
+            <Icon icon="lucide:star" /> {{ t('list.pinnedFilter') }}
           </span>
           <Icon icon="lucide:chevron-down" class="sort-chevron" />
         </button>
@@ -86,7 +86,7 @@
         <button
           v-if="!store.isTrashView"
           class="icon-btn"
-          title="Sposta in una cartella"
+          :title="t('list.moveToFolder')"
           :disabled="selectedIds.size === 0"
           @click="moveMenu.toggle($event)"
         >
@@ -94,13 +94,13 @@
         </button>
         <button
           class="icon-btn danger"
-          :title="store.isTrashView ? 'Elimina definitivamente' : 'Sposta nel cestino'"
+          :title="store.isTrashView ? t('list.deletePermanently') : t('list.moveToTrash')"
           :disabled="selectedIds.size === 0"
           @click="confirmBulkDelete"
         >
           <Icon icon="lucide:trash-2" />
         </button>
-        <button class="icon-btn select-mode-btn" title="Annulla selezione" @click="exitSelectionMode">
+        <button class="icon-btn select-mode-btn" :title="t('list.cancelSelection')" @click="exitSelectionMode">
           <Icon icon="lucide:x" />
         </button>
       </template>
@@ -109,7 +109,7 @@
     <div class="note-items">
       <div v-if="store.visibleNotes.length === 0" class="empty-state">
         <Icon icon="lucide:inbox" />
-        <p>Nessuna nota</p>
+        <p>{{ t('list.empty') }}</p>
       </div>
 
       <div
@@ -142,8 +142,8 @@
             @keyup.esc="renamingId = null"
             @blur="commitRename(note)"
           />
-          <span v-else class="note-title">{{ note.title || 'Nuova nota' }}</span>
-          <button v-if="!selectionMode" class="kebab" title="Azioni" @click.stop="openMenu($event, note)">
+          <span v-else class="note-title">{{ note.title || t('common.untitledNote') }}</span>
+          <button v-if="!selectionMode" class="kebab" :title="t('list.actions')" @click.stop="openMenu($event, note)">
             <Icon icon="lucide:ellipsis" />
           </button>
         </div>
@@ -169,7 +169,7 @@
     <Menu ref="moveMenu" :model="moveMenuItems" :popup="true">
       <template #start>
         <div class="menu-title">
-          Sposta {{ selectedIds.size === 1 ? 'la nota' : `${selectedIds.size} note` }} in
+          {{ t('list.moveMenuTitle', selectedIds.size) }}
         </div>
       </template>
       <template #item="{ item, props }">
@@ -183,7 +183,7 @@
     <!-- Menu ordinamento / filtri -->
     <Menu ref="sortMenu" :model="sortMenuItems" :popup="true">
       <template #start>
-        <div class="menu-title">Ordina per</div>
+        <div class="menu-title">{{ t('list.sortBy') }}</div>
       </template>
       <template #item="{ item, props }">
         <a
@@ -195,7 +195,7 @@
           <span class="grow">{{ item.label }}</span>
           <span v-if="item.sortKey && settings.sortKey === item.sortKey" class="sort-state">
             <Icon :icon="settings.sortDir === 'asc' ? 'lucide:arrow-up' : 'lucide:arrow-down'" />
-            {{ settings.sortDir === 'asc' ? 'crescente' : 'decrescente' }}
+            {{ settings.sortDir === 'asc' ? t('list.ascending') : t('list.descending') }}
           </span>
           <Icon v-else-if="item.filter && settings.pinnedOnly" icon="lucide:check" class="trail" />
         </a>
@@ -211,6 +211,7 @@ import Checkbox from 'primevue/checkbox'
 import { useConfirm } from 'primevue/useconfirm'
 import { useToast } from 'primevue/usetoast'
 import { Icon } from '@iconify/vue'
+import { useI18n } from 'vue-i18n'
 import { useNotesStore } from '../stores/notes'
 import { useSettingsStore } from '../stores/settings'
 import { useUiStore } from '../stores/ui'
@@ -218,6 +219,7 @@ import GlobalSearch from './GlobalSearch.vue'
 import { stripHtml, htmlToMarkdown } from '../utils/markdown'
 import { formatNoteDate, notePreview } from '../utils/noteDisplay'
 
+const { t } = useI18n()
 const store = useNotesStore()
 const settings = useSettingsStore()
 const ui = useUiStore()
@@ -234,19 +236,19 @@ const renamingId = ref(null)
 const renameValue = ref('')
 const renameInput = ref(null)
 
-const SORT_LABELS = {
-  updated: 'Data modifica',
-  created: 'Data creazione',
-  title: 'Titolo'
-}
-const sortLabel = computed(() => SORT_LABELS[settings.sortKey] || 'Data modifica')
+const SORT_LABELS = computed(() => ({
+  updated: t('list.sort.updated'),
+  created: t('list.sort.created'),
+  title: t('list.sort.title')
+}))
+const sortLabel = computed(() => SORT_LABELS.value[settings.sortKey] || SORT_LABELS.value.updated)
 
 // Voci di destinazione condivise fra il menu contestuale di una nota e il
 // menu della selezione multipla: cambia solo su quali id agiscono.
 // "Senza cartella" (folderId null) e' una destinazione valida come le altre,
 // coerente con createNote che lascia null fuori dalle cartelle.
 function folderTargetItems(ids, currentFolderId) {
-  const targets = [...store.folders, { id: null, name: 'Senza cartella' }]
+  const targets = [...store.folders, { id: null, name: t('list.noFolder') }]
   return targets.map((folder) => ({
     label: folder.name,
     icon: folder.id === null ? 'lucide:folder-minus' : 'lucide:folder',
@@ -262,8 +264,8 @@ function moveTo(ids, folderId, folderName) {
   store.moveNotesToFolder(ids, folderId)
   toast.add({
     severity: 'success',
-    summary: ids.length === 1 ? 'Nota spostata' : `${ids.length} note spostate`,
-    detail: `Destinazione: ${folderName}`,
+    summary: t('list.toast.moved', ids.length),
+    detail: t('list.toast.movedDestination', { name: folderName }),
     life: 1800
   })
   if (selectionMode.value) exitSelectionMode()
@@ -274,10 +276,10 @@ const noteMenuItems = computed(() => {
   if (!note) return []
   if (note.trashed) {
     return [
-      { label: 'Ripristina', icon: 'lucide:rotate-ccw', command: () => store.restoreNote(note.id) },
-      { label: 'Seleziona note', icon: 'lucide:list-checks', command: () => startSelectionFrom(note) },
+      { label: t('list.menu.restore'), icon: 'lucide:rotate-ccw', command: () => store.restoreNote(note.id) },
+      { label: t('list.selectNotes'), icon: 'lucide:list-checks', command: () => startSelectionFrom(note) },
       {
-        label: 'Elimina definitivamente',
+        label: t('list.deletePermanently'),
         icon: 'lucide:trash-2',
         danger: true,
         command: () => store.deleteNotePermanently(note.id)
@@ -285,19 +287,19 @@ const noteMenuItems = computed(() => {
     ]
   }
   return [
-    { label: 'Rinomina', icon: 'lucide:pencil', command: () => startRename(note) },
-    { label: 'Duplica', icon: 'lucide:copy-plus', command: () => store.duplicateNote(note.id) },
-    { label: 'Copia testo', icon: 'lucide:clipboard', command: () => copyText(note) },
-    { label: 'Copia come Markdown', icon: 'lucide:clipboard-list', command: () => copyMarkdown(note) },
+    { label: t('list.menu.rename'), icon: 'lucide:pencil', command: () => startRename(note) },
+    { label: t('list.menu.duplicate'), icon: 'lucide:copy-plus', command: () => store.duplicateNote(note.id) },
+    { label: t('list.menu.copyText'), icon: 'lucide:clipboard', command: () => copyText(note) },
+    { label: t('list.menu.copyMarkdown'), icon: 'lucide:clipboard-list', command: () => copyMarkdown(note) },
     { separator: true },
     {
-      label: note.pinned ? 'Rimuovi dai preferiti' : 'Aggiungi ai preferiti',
+      label: note.pinned ? t('list.menu.removeFromPinned') : t('list.menu.addToPinned'),
       icon: 'lucide:star',
       command: () => store.togglePin(note.id)
     },
-    { label: 'Seleziona note', icon: 'lucide:list-checks', command: () => startSelectionFrom(note) },
+    { label: t('list.selectNotes'), icon: 'lucide:list-checks', command: () => startSelectionFrom(note) },
     {
-      label: 'Sposta nel cestino',
+      label: t('list.moveToTrash'),
       icon: 'lucide:trash-2',
       danger: true,
       command: () => store.trashNote(note.id)
@@ -305,7 +307,7 @@ const noteMenuItems = computed(() => {
     // Gruppo, non sottomenu a comparsa: il Menu di PrimeVue rende `items`
     // come elenco piatto con intestazione (vedi Menu.vue, submenuLabel),
     // e in cambio si evita di dover aprire un popup da dentro un altro.
-    { label: 'Sposta in', items: folderTargetItems([note.id], note.folderId) }
+    { label: t('list.menu.moveTo'), items: folderTargetItems([note.id], note.folderId) }
   ]
 })
 
@@ -314,14 +316,14 @@ const noteMenuItems = computed(() => {
 const moveMenuItems = computed(() => folderTargetItems([...selectedIds]))
 
 const sortMenuItems = computed(() => [
-  { label: 'Data modifica', icon: 'lucide:clock', sortKey: 'updated', command: () => settings.setSort('updated') },
-  { label: 'Data creazione', icon: 'lucide:calendar', sortKey: 'created', command: () => settings.setSort('created') },
-  { label: 'Titolo', icon: 'lucide:case-sensitive', sortKey: 'title', command: () => settings.setSort('title') },
+  { label: t('list.sort.updated'), icon: 'lucide:clock', sortKey: 'updated', command: () => settings.setSort('updated') },
+  { label: t('list.sort.created'), icon: 'lucide:calendar', sortKey: 'created', command: () => settings.setSort('created') },
+  { label: t('list.sort.title'), icon: 'lucide:case-sensitive', sortKey: 'title', command: () => settings.setSort('title') },
   ...(store.isPinnedView
     ? []
     : [
         { separator: true },
-        { label: 'Solo preferiti', icon: 'lucide:star', filter: true, command: () => settings.togglePinnedOnly() }
+        { label: t('list.sort.pinnedOnly'), icon: 'lucide:star', filter: true, command: () => settings.togglePinnedOnly() }
       ])
 ])
 
@@ -345,21 +347,21 @@ function commitRename(note) {
 
 async function copyText(note) {
   await navigator.clipboard.writeText(stripHtml(note.content))
-  toast.add({ severity: 'success', summary: 'Testo copiato', life: 1800 })
+  toast.add({ severity: 'success', summary: t('list.toast.textCopied'), life: 1800 })
 }
 
 async function copyMarkdown(note) {
   await navigator.clipboard.writeText(htmlToMarkdown(note.content))
-  toast.add({ severity: 'success', summary: 'Markdown copiato', life: 1800 })
+  toast.add({ severity: 'success', summary: t('list.toast.markdownCopied'), life: 1800 })
 }
 
 function confirmEmptyTrash() {
   confirm.require({
-    message: 'Eliminare definitivamente tutte le note nel cestino?',
-    header: 'Svuota cestino',
+    message: t('list.confirm.emptyTrashMessage'),
+    header: t('list.emptyTrash'),
     icon: 'pi pi-exclamation-triangle',
-    acceptLabel: 'Svuota',
-    rejectLabel: 'Annulla',
+    acceptLabel: t('list.confirm.emptyTrashAccept'),
+    rejectLabel: t('list.confirm.cancel'),
     acceptClass: 'p-button-danger',
     rejectClass: 'p-button-secondary',
     accept: () => store.emptyTrash()
@@ -420,14 +422,13 @@ function confirmBulkDelete() {
   const ids = Array.from(selectedIds)
   if (!ids.length) return
   const count = ids.length
-  const noun = count === 1 ? 'nota' : 'note'
   if (store.isTrashView) {
     confirm.require({
-      message: `Eliminare definitivamente ${count} ${noun}? L'operazione non può essere annullata.`,
-      header: 'Elimina definitivamente',
+      message: t('list.confirm.bulkDeleteMessage', count),
+      header: t('list.deletePermanently'),
       icon: 'pi pi-exclamation-triangle',
-      acceptLabel: 'Elimina',
-      rejectLabel: 'Annulla',
+      acceptLabel: t('list.confirm.delete'),
+      rejectLabel: t('list.confirm.cancel'),
       acceptClass: 'p-button-danger',
       rejectClass: 'p-button-secondary',
       accept: () => {
@@ -443,7 +444,7 @@ function confirmBulkDelete() {
     exitSelectionMode()
     toast.add({
       severity: 'success',
-      summary: `${count} ${noun} nel cestino`,
+      summary: t('list.toast.trashed', count),
       life: 1800
     })
   }

@@ -1,12 +1,14 @@
 [package]
-name = "mac-notes-tauri"
-version = "0.9.0"
-description = "App di note in Tauri: frontend Vue, backend Rust — nata come porting di mac-notes"
+name = "rustnotes"
+version = "0.10.0"
+description = "RustNotes: a simple, local-first notes app. Vue frontend, Rust backend (Tauri v2)."
 authors = ["Simone Di Ricco"]
 edition = "2021"
+license = "MIT"
+repository = "https://github.com/sdiricco/mac-notes-tauri"
 
 [lib]
-name = "mac_notes_tauri_lib"
+name = "rustnotes_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
@@ -24,3 +26,7 @@ serde_json = "1"
 base64 = "0.22"
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 tokio = { version = "1", features = ["time"] }
+sys-locale = "0.3"
+
+[dev-dependencies]
+tempfile = "3"

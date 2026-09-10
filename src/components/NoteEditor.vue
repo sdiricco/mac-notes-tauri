@@ -2,7 +2,7 @@
   <section class="note-editor">
     <div v-if="!store.selectedNote" class="empty-state">
       <Icon icon="lucide:notebook-pen" />
-      <p>Seleziona una nota o creane una nuova</p>
+      <p>{{ t('editor.emptyState') }}</p>
     </div>
 
     <template v-else>
@@ -26,12 +26,12 @@
              QuillEditor (toolbar vuota). Disponibile da Vue 3.5. -->
         <Teleport defer to="#header-note-actions">
         <div class="action-card">
-            <button class="icon-btn" title="Cerca nella nota (⌘F)" @click="quillEditorRef?.toggleFindBar()">
+            <button class="icon-btn" :title="t('editor.findInNote', { shortcut: shortcut('mod+F') })" @click="quillEditorRef?.toggleFindBar()">
               <Icon icon="lucide:search" />
             </button>
             <button
               class="icon-btn"
-              :title="store.selectedNote.pinned ? 'Rimuovi dai preferiti' : 'Aggiungi ai preferiti'"
+              :title="store.selectedNote.pinned ? t('editor.removeFromFavorites') : t('editor.addToFavorites')"
               @click="store.togglePin(store.selectedNote.id)"
             >
               <Icon icon="lucide:star" :class="{ filled: store.selectedNote.pinned }" />
@@ -39,35 +39,35 @@
             <button
               v-if="!store.selectedNote.trashed"
               class="icon-btn"
-              title="Sposta nel cestino"
+              :title="t('editor.moveToTrash')"
               @click="moveToTrash"
             >
               <Icon icon="lucide:trash-2" />
             </button>
-            <button v-else class="icon-btn" title="Ripristina" @click="store.restoreNote(store.selectedNote.id)">
+            <button v-else class="icon-btn" :title="t('editor.restore')" @click="store.restoreNote(store.selectedNote.id)">
               <Icon icon="lucide:rotate-ccw" />
             </button>
 
           <div ref="actionOverflowEl" class="action-overflow">
-            <button class="icon-btn" title="Altre azioni" @click="actionMenuOpen = !actionMenuOpen">
+            <button class="icon-btn" :title="t('editor.moreActions')" @click="actionMenuOpen = !actionMenuOpen">
               <Icon icon="lucide:ellipsis" />
             </button>
             <div v-if="actionMenuOpen" class="action-overflow-menu">
               <button @click="importNote(); actionMenuOpen = false">
                 <Icon icon="lucide:upload" />
-                <span>Importa Markdown</span>
+                <span>{{ t('editor.importMarkdown') }}</span>
               </button>
               <button @click="openMarkdownPreview(); actionMenuOpen = false">
                 <Icon icon="lucide:file-code" />
-                <span>Markdown...</span>
+                <span>{{ t('editor.markdownMenu') }}</span>
               </button>
               <button @click="settings.toggleSpellcheck()">
                 <Icon icon="lucide:spell-check" />
-                <span>Ortografia: {{ settings.spellcheck ? 'attiva' : 'disattiva' }}</span>
+                <span>{{ settings.spellcheck ? t('editor.spellcheckOn') : t('editor.spellcheckOff') }}</span>
               </button>
               <button @click="api.revealDataFile(); actionMenuOpen = false">
                 <Icon icon="lucide:folder-open" />
-                <span>Mostra nel Finder</span>
+                <span>{{ t('editor.revealInFinder', isMac ? 1 : 2) }}</span>
               </button>
             </div>
           </div>
@@ -88,7 +88,7 @@
       <Dialog
         v-model:visible="markdownPreviewOpen"
         modal
-        header="Markdown"
+        :header="t('editor.markdownDialogTitle')"
         :style="{ width: '38rem' }"
         :draggable="false"
         dismissable-mask
@@ -97,11 +97,11 @@
         <template #footer>
           <button class="md-action-btn" @click="copyNote">
             <Icon icon="lucide:copy" />
-            <span>Copia</span>
+            <span>{{ t('editor.copy') }}</span>
           </button>
           <button class="md-action-btn primary" @click="exportNote">
             <Icon icon="lucide:download" />
-            <span>Scarica</span>
+            <span>{{ t('editor.download') }}</span>
           </button>
         </template>
       </Dialog>
@@ -110,7 +110,8 @@
 </template>
 
 <script setup>
-import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import Dialog from 'primevue/dialog'
 import { useToast } from 'primevue/usetoast'
 import { Icon } from '@iconify/vue'
@@ -119,10 +120,12 @@ import { useSettingsStore } from '../stores/settings'
 import QuillEditor from './QuillEditor.vue'
 import { htmlToMarkdown, markdownToHtml } from '../utils/markdown'
 import { api } from '../utils/api'
+import { isMac, shortcut } from '../utils/shortcuts'
 
 const store = useNotesStore()
 const settings = useSettingsStore()
 const toast = useToast()
+const { t } = useI18n()
 
 const quillToolbarEl = ref(null)
 const quillEditorRef = ref(null)
@@ -140,6 +143,23 @@ const markdownPreviewText = ref('')
 const actionMenuOpen = ref(false)
 const actionOverflowEl = ref(null)
 
+// Etichette del picker "lista" della toolbar Quill: sono `content` CSS
+// (::before, vedi <style>), quindi passano da v-bind() come stringhe CSS già
+// tra virgolette (JSON.stringify), e si aggiornano al cambio lingua.
+const listPickerCss = computed(() => {
+  const q = (key) => JSON.stringify(t(`editor.listPicker.${key}`))
+  return {
+    list: q('list'),
+    ordered: q('ordered'),
+    bullet: q('bullet'),
+    checklist: q('checklist'),
+    listItem: JSON.stringify(`– ${t('editor.listPicker.list')}`),
+    orderedItem: JSON.stringify(`1. ${t('editor.listPicker.ordered')}`),
+    bulletItem: JSON.stringify(`• ${t('editor.listPicker.bullet')}`),
+    checklistItem: JSON.stringify(`☑ ${t('editor.listPicker.checklist')}`)
+  }
+})
+
 function onGlobalMousedown(event) {
   if (actionMenuOpen.value && actionOverflowEl.value && !actionOverflowEl.value.contains(event.target)) {
     actionMenuOpen.value = false
@@ -153,6 +173,11 @@ let offFindInNote = null
 onMounted(() => {
   window.addEventListener('mousedown', onGlobalMousedown)
   offFindInNote = api.onMenu('menu:find-in-note', () => quillEditorRef.value?.toggleFindBar())
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('mousedown', onGlobalMousedown)
+  offFindInNote?.()
 })
 
 function openMarkdownPreview() {
@@ -173,13 +198,13 @@ function onContentChange(html) {
 
 function suggestedFileName() {
   const title = store.selectedNote.title?.trim()
-  return title ? title.replace(/[\\/:*?"<>|]+/g, '-').slice(0, 80) : 'nota'
+  return title ? title.replace(/[\\/:*?"<>|]+/g, '-').slice(0, 80) : t('editor.exportFileName')
 }
 
 async function exportNote() {
   const markdown = htmlToMarkdown(store.selectedNote.content)
   const result = await api.exportMarkdown(markdown, suggestedFileName())
-  if (result) toast.add({ severity: 'success', summary: 'Nota esportata come Markdown', life: 1800 })
+  if (result) toast.add({ severity: 'success', summary: t('editor.toast.exported'), life: 1800 })
 }
 
 async function importNote() {
@@ -187,12 +212,12 @@ async function importNote() {
   if (!result) return
   store.updateNote(store.selectedNote.id, { content: markdownToHtml(result.markdown) })
   reloadCounter.value++
-  toast.add({ severity: 'success', summary: 'Markdown importato nella nota', life: 1800 })
+  toast.add({ severity: 'success', summary: t('editor.toast.imported'), life: 1800 })
 }
 
 async function copyNote() {
   await navigator.clipboard.writeText(htmlToMarkdown(store.selectedNote.content))
-  toast.add({ severity: 'success', summary: 'Copiato come Markdown', life: 1800 })
+  toast.add({ severity: 'success', summary: t('editor.toast.copied'), life: 1800 })
 }
 </script>
 
@@ -537,31 +562,31 @@ async function copyNote() {
   width: 78px;
 }
 .floating-toolbar :deep(.ql-picker.ql-list .ql-picker-label)::before {
-  content: 'Lista';
+  content: v-bind('listPickerCss.list');
 }
 .floating-toolbar :deep(.ql-picker.ql-list .ql-picker-label[data-value='ordered'])::before {
-  content: 'Numerata';
+  content: v-bind('listPickerCss.ordered');
 }
 .floating-toolbar :deep(.ql-picker.ql-list .ql-picker-label[data-value='bullet'])::before {
-  content: 'Puntata';
+  content: v-bind('listPickerCss.bullet');
 }
 .floating-toolbar :deep(.ql-picker.ql-list .ql-picker-label[data-value='unchecked'])::before {
-  content: 'Checklist';
+  content: v-bind('listPickerCss.checklist');
 }
 
 /* Nelle voci del menu (aperto) un glifo davanti al testo aiuta a distinguere
    subito il tipo di lista, invece del solo nome. */
 .floating-toolbar :deep(.ql-picker.ql-list .ql-picker-item)::before {
-  content: '– Lista';
+  content: v-bind('listPickerCss.listItem');
 }
 .floating-toolbar :deep(.ql-picker.ql-list .ql-picker-item[data-value='ordered'])::before {
-  content: '1. Numerata';
+  content: v-bind('listPickerCss.orderedItem');
 }
 .floating-toolbar :deep(.ql-picker.ql-list .ql-picker-item[data-value='bullet'])::before {
-  content: '• Puntata';
+  content: v-bind('listPickerCss.bulletItem');
 }
 .floating-toolbar :deep(.ql-picker.ql-list .ql-picker-item[data-value='unchecked'])::before {
-  content: '☑ Checklist';
+  content: v-bind('listPickerCss.checklistItem');
 }
 
 /* Color/background: la label mostra l'icona del pennarello, non un testo con

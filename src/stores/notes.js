@@ -3,6 +3,7 @@ import { v4 as uuid } from 'uuid'
 import { stripHtml, extractTitleFromHtml } from '../utils/markdown'
 import { api } from '../utils/api'
 import { useSettingsStore } from './settings'
+import { t, currentLocale } from '../i18n'
 
 const ALL = 'all'
 const TRASH = 'trash'
@@ -77,10 +78,10 @@ export const useNotesStore = defineStore('notes', {
     // componenti perche' lo mostrano sia l'intestazione della lista sia il
     // breadcrumb nell'header: due copie finirebbero per divergere.
     currentViewName: (state) => {
-      if (state.selectedFolderId === ALL) return 'Tutte le Note'
-      if (state.selectedFolderId === PINNED) return 'Preferiti'
-      if (state.selectedFolderId === TRASH) return 'Cestino'
-      return state.folders.find((f) => f.id === state.selectedFolderId)?.name || 'Note'
+      if (state.selectedFolderId === ALL) return t('store.allNotes')
+      if (state.selectedFolderId === PINNED) return t('store.pinned')
+      if (state.selectedFolderId === TRASH) return t('store.trash')
+      return state.folders.find((f) => f.id === state.selectedFolderId)?.name || t('store.notes')
     },
 
     folderCount: (state) => (folderId) =>
@@ -114,9 +115,9 @@ export const useNotesStore = defineStore('notes', {
         // i preferiti restano sempre in cima
         if (a.pinned !== b.pinned) return a.pinned ? -1 : 1
         if (settings.sortKey === 'title') {
-          const ta = a.title?.trim() || 'Nuova nota'
-          const tb = b.title?.trim() || 'Nuova nota'
-          return dir * ta.localeCompare(tb, 'it', { sensitivity: 'base' })
+          const ta = a.title?.trim() || t('common.untitledNote')
+          const tb = b.title?.trim() || t('common.untitledNote')
+          return dir * ta.localeCompare(tb, currentLocale(), { sensitivity: 'base' })
         }
         if (settings.sortKey === 'created') return dir * (a.createdAt - b.createdAt)
         return dir * (a.updatedAt - b.updatedAt)
@@ -210,7 +211,7 @@ export const useNotesStore = defineStore('notes', {
       const copy = {
         ...JSON.parse(JSON.stringify(note)),
         id: uuid(),
-        title: `${note.title?.trim() || 'Nuova nota'} copia`,
+        title: `${note.title?.trim() || t('common.untitledNote')} ${t('common.copySuffix')}`,
         pinned: false,
         trashed: false,
         createdAt: now,
@@ -329,7 +330,7 @@ export const useNotesStore = defineStore('notes', {
     },
 
     createFolder(name) {
-      const folder = { id: uuid(), name: name?.trim() || 'Nuova cartella', createdAt: Date.now() }
+      const folder = { id: uuid(), name: name?.trim() || t('common.newFolder'), createdAt: Date.now() }
       this.folders.push(folder)
       saveFoldersNow(this.folders)
       return folder

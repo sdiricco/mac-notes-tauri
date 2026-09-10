@@ -11,13 +11,13 @@
     <div class="settings-topbar" data-tauri-drag-region="deep">
       <button
         class="icon-btn"
-        :title="showingDetailOnNarrow ? 'Tutte le categorie' : 'Chiudi impostazioni'"
+        :title="showingDetailOnNarrow ? t('settings.allCategories') : t('settings.close')"
         data-tauri-drag-region="false"
         @click="back"
       >
         <Icon icon="lucide:arrow-left" />
       </button>
-      <h1>{{ showingDetailOnNarrow ? current.label : 'Impostazioni' }}</h1>
+      <h1>{{ showingDetailOnNarrow ? current.label : t('settings.title') }}</h1>
     </div>
 
     <div class="settings-layout">
@@ -29,11 +29,11 @@
         class="settings-nav"
         role="tablist"
         aria-orientation="vertical"
-        aria-label="Categorie impostazioni"
+        :aria-label="t('settings.categoriesAria')"
         @keydown="onNavKeydown"
       >
         <button
-          v-for="(s, i) in SECTIONS"
+          v-for="(s, i) in sections"
           :key="s.id"
           :ref="(el) => (navEls[i] = el)"
           class="nav-item"
@@ -63,19 +63,48 @@
 
           <!-- ===================== Generale ===================== -->
           <template v-if="current.id === 'general'">
+            <!-- Lingua dell'interfaccia: una tendina e non il controllo
+                 segmentato del tema, perche' con otto lingue i segmenti non
+                 starebbero nella larghezza della scheda. -->
             <section class="group">
-              <div class="group-title">Elenco note</div>
+              <div class="group-title">{{ t('settings.general.language.title') }}</div>
               <div class="card">
                 <div class="row">
                   <div class="row-text">
-                    <span class="row-label">Ordinamento predefinito</span>
-                    <span class="row-desc">Criterio con cui e' ordinato l'elenco delle note</span>
+                    <span class="row-label">{{ t('settings.general.language.title') }}</span>
+                    <span class="row-desc">{{ t('settings.general.language.note') }}</span>
                   </div>
-                  <select :value="settings.sortKey" class="settings-select" @change="settings.setSort($event.target.value)">
-                    <option value="updated">Data modifica</option>
-                    <option value="created">Data creazione</option>
-                    <option value="title">Titolo</option>
-                  </select>
+                  <Select
+                    :model-value="settings.language"
+                    :options="languageOptions"
+                    option-label="label"
+                    option-value="value"
+                    size="small"
+                    class="settings-select"
+                    :aria-label="t('settings.general.language.aria')"
+                    @update:model-value="settings.setLanguage($event)"
+                  />
+                </div>
+              </div>
+            </section>
+
+            <section class="group">
+              <div class="group-title">{{ t('settings.general.list.title') }}</div>
+              <div class="card">
+                <div class="row">
+                  <div class="row-text">
+                    <span class="row-label">{{ t('settings.general.list.sortLabel') }}</span>
+                    <span class="row-desc">{{ t('settings.general.list.sortDesc') }}</span>
+                  </div>
+                  <Select
+                    :model-value="settings.sortKey"
+                    :options="sortOptions"
+                    option-label="label"
+                    option-value="value"
+                    size="small"
+                    class="settings-select"
+                    @update:model-value="settings.setSort($event)"
+                  />
                 </div>
               </div>
             </section>
@@ -84,10 +113,10 @@
           <!-- ===================== Aspetto ===================== -->
           <template v-else-if="current.id === 'appearance'">
             <section class="group">
-              <div class="group-title">Tema</div>
+              <div class="group-title">{{ t('settings.appearance.theme.title') }}</div>
               <div class="card">
                 <div class="row row-stack">
-                  <div class="segmented" role="radiogroup" aria-label="Tema">
+                  <div class="segmented" role="radiogroup" :aria-label="t('settings.appearance.theme.aria')">
                     <button
                       v-for="opt in themeOptions"
                       :key="opt.value"
@@ -103,19 +132,19 @@
                   </div>
                 </div>
               </div>
-              <p class="group-note">Con "Sistema" l'app segue l'aspetto chiaro o scuro di macOS.</p>
+              <p class="group-note">{{ t('settings.appearance.theme.note') }}</p>
             </section>
           </template>
 
           <!-- ===================== Editor ===================== -->
           <template v-else-if="current.id === 'editor'">
             <section class="group">
-              <div class="group-title">Correzione ortografica</div>
+              <div class="group-title">{{ t('settings.editor.spell.title') }}</div>
               <div class="card">
                 <div class="row">
                   <div class="row-text">
-                    <span id="spell-label" class="row-label">Correzione ortografica</span>
-                    <span class="row-desc">Sottolinea le parole non riconosciute mentre scrivi</span>
+                    <span id="spell-label" class="row-label">{{ t('settings.editor.spell.label') }}</span>
+                    <span class="row-desc">{{ t('settings.editor.spell.desc') }}</span>
                   </div>
                   <button
                     class="switch"
@@ -129,21 +158,19 @@
                 </div>
                 <div class="row" :class="{ 'is-disabled': !settings.spellcheck }">
                   <div class="row-text">
-                    <span class="row-label">Lingua</span>
-                    <span class="row-desc">Dizionario usato per la correzione</span>
+                    <span class="row-label">{{ t('settings.editor.spell.langLabel') }}</span>
+                    <span class="row-desc">{{ t('settings.editor.spell.langDesc') }}</span>
                   </div>
-                  <select
-                    :value="settings.spellLang"
+                  <Select
+                    :model-value="settings.spellLang"
+                    :options="spellLangOptions"
+                    option-label="label"
+                    option-value="value"
+                    size="small"
                     class="settings-select"
                     :disabled="!settings.spellcheck"
-                    @change="settings.setSpellLang($event.target.value)"
-                  >
-                    <option value="it">Italiano</option>
-                    <option value="en">English</option>
-                    <option value="es">Español</option>
-                    <option value="fr">Français</option>
-                    <option value="de">Deutsch</option>
-                  </select>
+                    @update:model-value="settings.setSpellLang($event)"
+                  />
                 </div>
               </div>
             </section>
@@ -166,25 +193,97 @@
 
           <!-- ===================== Informazioni ===================== -->
           <template v-else-if="current.id === 'about'">
+            <!-- Dove vivono le note. Puntare una cartella sincronizzata
+                 (iCloud, Dropbox, Syncthing) e' il modo in cui l'app offre il
+                 sync senza account ne' server. -->
             <section class="group">
-              <div class="group-title">Applicazione</div>
+              <div class="group-title">{{ t('settings.data.title') }}</div>
+              <div class="card">
+                <div class="row row-stack">
+                  <div class="row-text">
+                    <span class="row-label">
+                      {{ t('settings.data.folderLabel') }}
+                      <span v-if="dataDir.isDefault" class="badge">{{ t('settings.data.defaultBadge') }}</span>
+                    </span>
+                    <span class="row-desc">{{ t('settings.data.folderDesc') }}</span>
+                  </div>
+                  <code class="data-path" :title="dataDir.dir">{{ dataDir.dir || '—' }}</code>
+                  <div class="btn-row">
+                    <Button
+                      :label="t('settings.data.change')"
+                      severity="secondary"
+                      outlined
+                      size="small"
+                      :loading="changingDir"
+                      @click="onChangeDataDir"
+                    >
+                      <template #icon><Icon icon="lucide:folder-input" /></template>
+                    </Button>
+                    <Button
+                      v-if="!dataDir.isDefault"
+                      :label="t('settings.data.reset')"
+                      severity="secondary"
+                      outlined
+                      size="small"
+                      :disabled="changingDir"
+                      @click="onResetDataDir"
+                    >
+                      <template #icon><Icon icon="lucide:undo-2" /></template>
+                    </Button>
+                    <Button
+                      :label="t('settings.data.reveal', isMac ? 1 : 2)"
+                      severity="secondary"
+                      outlined
+                      size="small"
+                      @click="api.revealDataFile()"
+                    >
+                      <template #icon><Icon icon="lucide:folder-open" /></template>
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section class="group">
+              <div class="group-title">{{ t('settings.about.title') }}</div>
               <div class="card">
                 <div class="row">
-                  <span class="row-label">Versione</span>
+                  <span class="row-label">{{ t('settings.about.version') }}</span>
                   <span class="row-value">{{ updateCheck.currentVersion || '—' }}</span>
+                </div>
+                <!-- I dati sono dell'utente: una via d'uscita completa, non
+                     solo l'export nota per nota dall'editor. -->
+                <div class="row">
+                  <div class="row-text">
+                    <span class="row-label">{{ t('settings.about.exportAll') }}</span>
+                    <span class="row-desc">{{ t('settings.about.exportAllDesc') }}</span>
+                  </div>
+                  <Button
+                    :label="t('settings.about.exportAllButton')"
+                    severity="secondary"
+                    outlined
+                    size="small"
+                    :loading="exporting"
+                    @click="onExportAll"
+                  >
+                    <template #icon><Icon icon="lucide:folder-output" /></template>
+                  </Button>
                 </div>
                 <div class="row">
                   <div class="row-text">
-                    <span class="row-label">Aggiornamenti</span>
-                    <span class="row-desc">Confronta con l'ultima versione pubblicata</span>
+                    <span class="row-label">{{ t('settings.about.updates') }}</span>
+                    <span class="row-desc">{{ t('settings.about.updatesDesc') }}</span>
                   </div>
-                  <button class="action-btn" :disabled="updateCheck.checking" @click="onCheckUpdates">
-                    <Icon
-                      :icon="updateCheck.checking ? 'lucide:loader-circle' : 'lucide:refresh-cw'"
-                      :class="{ spin: updateCheck.checking }"
-                    />
-                    <span>{{ updateCheck.checking ? 'Verifica…' : 'Controlla aggiornamenti' }}</span>
-                  </button>
+                  <Button
+                    :label="updateCheck.checking ? t('settings.about.checking') : t('settings.about.checkUpdates')"
+                    severity="secondary"
+                    outlined
+                    size="small"
+                    :loading="updateCheck.checking"
+                    @click="onCheckUpdates"
+                  >
+                    <template #icon><Icon icon="lucide:refresh-cw" /></template>
+                  </Button>
                 </div>
               </div>
               <div
@@ -195,10 +294,10 @@
               >
                 <Icon :icon="updateCheck.available ? 'lucide:arrow-up-circle' : 'lucide:check-circle'" />
                 <span v-if="updateCheck.available">
-                  Versione {{ updateCheck.latestVersion }} disponibile — esegui
+                  {{ t('settings.about.available', { version: updateCheck.latestVersion }) }}
                   <code>brew upgrade --cask mac-notes-tauri</code>
                 </span>
-                <span v-else>Hai già la versione più recente</span>
+                <span v-else>{{ t('settings.about.upToDate') }}</span>
               </div>
             </section>
           </template>
@@ -211,28 +310,120 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { Icon } from '@iconify/vue'
+import Button from 'primevue/button'
+import Select from 'primevue/select'
+import { useI18n } from 'vue-i18n'
 import { useSettingsStore } from '../stores/settings'
 import { useUiStore } from '../stores/ui'
 import { useUpdateCheckStore } from '../stores/updateCheck'
-import { ALT, MOD, SHIFT } from '../utils/shortcuts'
+import { useNotesStore } from '../stores/notes'
+import { useToast } from 'primevue/usetoast'
+import { ALT, MOD, SHIFT, isMac } from '../utils/shortcuts'
+import { exportAllNotes } from '../utils/exportAll'
+import { api } from '../utils/api'
+import { useConfirm } from 'primevue/useconfirm'
+import { LOCALES } from '../i18n'
 
+const { t } = useI18n()
 const settings = useSettingsStore()
 const ui = useUiStore()
 const updateCheck = useUpdateCheckStore()
+const notes = useNotesStore()
+const toast = useToast()
+const confirm = useConfirm()
 const hasChecked = ref(false)
+const exporting = ref(false)
+
+// Cartella dati: letta da Rust all'apertura della pagina, non dallo store
+// settings (che vive in localStorage della webview): e' Rust che la decide,
+// perche' deve conoscerla prima che la webview esista.
+const dataDir = ref({ dir: '', isDefault: true })
+const changingDir = ref(false)
+
+async function refreshDataDir() {
+  try {
+    dataDir.value = await api.getDataDirInfo()
+  } catch {
+    // fuori da Tauri (test, anteprima) resta il placeholder
+  }
+}
+onMounted(refreshDataDir)
+
+// Prima di cambiare cartella si guarda cosa contiene: se ha gia' un archivio
+// RustNotes si adottano quelle note (caso "secondo computer sulla stessa
+// cartella sincronizzata"), altrimenti si spostano le correnti. In entrambi
+// i casi l'utente conferma sapendo cosa succedera'.
+function askDataDirConfirm(target, inspection) {
+  const count = inspection.hasData ? inspection.noteCount : notes.notes.length
+  const adopt = inspection.hasData
+  return new Promise((resolve) => {
+    confirm.require({
+      header: adopt ? t('settings.data.confirmAdoptTitle') : t('settings.data.confirmMoveTitle'),
+      message: adopt
+        ? t('settings.data.confirmAdopt', { dir: target, count }, count)
+        : t('settings.data.confirmMove', { dir: target, count }, count),
+      acceptLabel: t('settings.data.confirm'),
+      rejectLabel: t('settings.data.cancel'),
+      accept: () => resolve(true),
+      reject: () => resolve(false),
+      onHide: () => resolve(false)
+    })
+  })
+}
+
+async function applyDataDir(target) {
+  changingDir.value = true
+  try {
+    const result = await api.setDataDir(target)
+    if (result.mode !== 'unchanged') {
+      // L'archivio in uso e' un altro: lo store va ricaricato da zero.
+      await notes.init()
+      toast.add({
+        severity: 'success',
+        summary: result.mode === 'adopted' ? t('settings.data.adoptedToast') : t('settings.data.movedToast'),
+        detail: t('settings.data.toastDetail', { dir: result.dir }),
+        life: 5000
+      })
+    }
+    await refreshDataDir()
+  } catch (err) {
+    toast.add({ severity: 'error', summary: t('settings.data.failedToast'), detail: String(err), life: 6000 })
+  } finally {
+    changingDir.value = false
+  }
+}
+
+async function onChangeDataDir() {
+  const picked = await api.pickFolder()
+  if (!picked || picked === dataDir.value.dir) return
+  const inspection = await api.inspectDir(picked)
+  if (await askDataDirConfirm(picked, inspection)) await applyDataDir(picked)
+}
+
+async function onResetDataDir() {
+  // La predefinita non e' nota qui: si chiede a Rust ispezionando "null"
+  // dopo, ma per la conferma basta sapere che ci si sta tornando. Se la
+  // predefinita contiene gia' note (raro: qualcuno ci ha scritto a mano)
+  // Rust le adotta, e il toast lo dice.
+  const target = null
+  if (await askDataDirConfirm(t('settings.data.defaultBadge'), { hasData: false, noteCount: 0 })) {
+    await applyDataDir(target)
+  }
+}
 
 // Ordine = ordine in cui le si incontra: prima cio' che si tocca piu' spesso,
 // per ultime le informazioni, che si consultano e non si impostano.
-const SECTIONS = [
-  { id: 'general', label: 'Generale', icon: 'lucide:sliders-horizontal' },
-  { id: 'appearance', label: 'Aspetto', icon: 'lucide:palette' },
-  { id: 'editor', label: 'Editor', icon: 'lucide:spell-check' },
-  { id: 'shortcuts', label: 'Scorciatoie', icon: 'lucide:keyboard' },
-  { id: 'about', label: 'Informazioni', icon: 'lucide:info' }
-]
+// Computed e non costante: le etichette seguono la lingua corrente.
+const sections = computed(() => [
+  { id: 'general', label: t('settings.sections.general'), icon: 'lucide:sliders-horizontal' },
+  { id: 'appearance', label: t('settings.sections.appearance'), icon: 'lucide:palette' },
+  { id: 'editor', label: t('settings.sections.editor'), icon: 'lucide:spell-check' },
+  { id: 'shortcuts', label: t('settings.sections.shortcuts'), icon: 'lucide:keyboard' },
+  { id: 'about', label: t('settings.sections.about'), icon: 'lucide:info' }
+])
 
 const current = computed(
-  () => SECTIONS.find((s) => s.id === ui.settingsSection) || SECTIONS[0]
+  () => sections.value.find((s) => s.id === ui.settingsSection) || sections.value[0]
 )
 
 // Master-detail a finestra stretta: false = elenco categorie, true = una
@@ -263,10 +454,10 @@ async function onNavKeydown(event) {
   const move = keys[event.key]
   if (move === undefined) return
   event.preventDefault()
-  const i = SECTIONS.findIndex((s) => s.id === ui.settingsSection)
-  const n = SECTIONS.length
+  const i = sections.value.findIndex((s) => s.id === ui.settingsSection)
+  const n = sections.value.length
   const next = move === 'first' ? 0 : move === 'last' ? n - 1 : (i + move + n) % n
-  ui.settingsSection = SECTIONS[next].id
+  ui.settingsSection = sections.value[next].id
   await nextTick()
   navEls.value[next]?.focus()
 }
@@ -286,55 +477,131 @@ function onKeydown(event) {
 onMounted(() => window.addEventListener('keydown', onKeydown))
 onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
 
-const themeOptions = [
-  { value: 'system', label: 'Sistema', icon: 'lucide:monitor' },
-  { value: 'light', label: 'Chiaro', icon: 'lucide:sun' },
-  { value: 'dark', label: 'Scuro', icon: 'lucide:moon' }
-]
+const themeOptions = computed(() => [
+  { value: 'system', label: t('settings.appearance.theme.system'), icon: 'lucide:monitor' },
+  { value: 'light', label: t('settings.appearance.theme.light'), icon: 'lucide:sun' },
+  { value: 'dark', label: t('settings.appearance.theme.dark'), icon: 'lucide:moon' }
+])
+
+
+// Opzioni delle tendine: computed perche' le etichette seguono la lingua.
+// 'system' segue il sistema operativo (vedi resolveLocale in i18n); i nomi
+// delle lingue sono nativi e vengono da LOCALES.
+const languageOptions = computed(() => [
+  { value: 'system', label: t('settings.general.language.system') },
+  ...LOCALES.map((l) => ({ value: l.code, label: l.name }))
+])
+const sortOptions = computed(() => [
+  { value: 'updated', label: t('settings.general.list.sortUpdated') },
+  { value: 'created', label: t('settings.general.list.sortCreated') },
+  { value: 'title', label: t('settings.general.list.sortTitle') }
+])
+const spellLangOptions = computed(() =>
+  ['it', 'en', 'es', 'fr', 'de'].map((code) => ({
+    value: code,
+    label: t(`settings.editor.spell.lang${code[0].toUpperCase()}${code[1]}`)
+  }))
+)
 
 // Etichette da utils/shortcuts, le stesse dei tooltip della toolbar: una sola
 // fonte, cosi' cambiare una combinazione aggiorna entrambe.
-const shortcutGroups = [
+const shortcutGroups = computed(() => [
   {
-    title: 'Generale',
+    title: t('settings.shortcuts.general.title'),
     items: [
-      { label: 'Nuova nota', keys: [MOD, 'N'] },
-      { label: 'Nuova cartella', keys: [MOD, SHIFT, 'N'] },
-      { label: 'Duplica nota', keys: [MOD, 'D'] },
-      { label: 'Cerca nella nota', keys: [MOD, 'F'] },
-      { label: 'Cerca in tutte le note', keys: [MOD, SHIFT, 'F'] },
-      { label: 'Mostra/Nascondi sidebar', keys: [MOD, '/'] },
-      { label: 'Impostazioni', keys: [MOD, ','] }
+      { label: t('settings.shortcuts.general.newNote'), keys: [MOD, 'N'] },
+      { label: t('settings.shortcuts.general.newFolder'), keys: [MOD, SHIFT, 'N'] },
+      { label: t('settings.shortcuts.general.duplicateNote'), keys: [MOD, 'D'] },
+      { label: t('settings.shortcuts.general.findInNote'), keys: [MOD, 'F'] },
+      { label: t('settings.shortcuts.general.findInAllNotes'), keys: [MOD, SHIFT, 'F'] },
+      { label: t('settings.shortcuts.general.toggleSidebar'), keys: [MOD, '/'] },
+      { label: t('settings.shortcuts.general.settings'), keys: [MOD, ','] }
     ]
   },
   {
-    title: 'Formattazione (nell’editor)',
+    title: t('settings.shortcuts.formatting.title'),
     items: [
-      { label: 'Grassetto', keys: [MOD, 'B'] },
-      { label: 'Corsivo', keys: [MOD, 'I'] },
-      { label: 'Sottolineato', keys: [MOD, 'U'] },
-      { label: 'Barrato', keys: [MOD, SHIFT, 'X'] },
-      { label: 'Codice inline', keys: [MOD, 'E'] },
-      { label: 'Titolo 1 / 2 / 3', keys: [MOD, ALT, '1·2·3'] },
-      { label: 'Testo normale', keys: [MOD, ALT, '0'] },
-      { label: 'Elenco numerato', keys: [MOD, SHIFT, '7'] },
-      { label: 'Elenco puntato', keys: [MOD, SHIFT, '8'] },
-      { label: 'Elenco di controllo', keys: [MOD, SHIFT, '9'] },
-      { label: 'Citazione', keys: [MOD, SHIFT, 'B'] },
-      { label: 'Blocco di codice', keys: [MOD, SHIFT, 'C'] },
-      { label: 'Inserisci link', keys: [MOD, 'K'] },
-      { label: 'Annulla / Ripeti', keys: [MOD, '(⇧) Z'] }
+      { label: t('settings.shortcuts.formatting.bold'), keys: [MOD, 'B'] },
+      { label: t('settings.shortcuts.formatting.italic'), keys: [MOD, 'I'] },
+      { label: t('settings.shortcuts.formatting.underline'), keys: [MOD, 'U'] },
+      { label: t('settings.shortcuts.formatting.strike'), keys: [MOD, SHIFT, 'X'] },
+      { label: t('settings.shortcuts.formatting.inlineCode'), keys: [MOD, 'E'] },
+      { label: t('settings.shortcuts.formatting.headings'), keys: [MOD, ALT, '1·2·3'] },
+      { label: t('settings.shortcuts.formatting.normalText'), keys: [MOD, ALT, '0'] },
+      { label: t('settings.shortcuts.formatting.orderedList'), keys: [MOD, SHIFT, '7'] },
+      { label: t('settings.shortcuts.formatting.bulletList'), keys: [MOD, SHIFT, '8'] },
+      { label: t('settings.shortcuts.formatting.checklist'), keys: [MOD, SHIFT, '9'] },
+      { label: t('settings.shortcuts.formatting.quote'), keys: [MOD, SHIFT, 'B'] },
+      { label: t('settings.shortcuts.formatting.codeBlock'), keys: [MOD, SHIFT, 'C'] },
+      { label: t('settings.shortcuts.formatting.insertLink'), keys: [MOD, 'K'] },
+      { label: t('settings.shortcuts.formatting.undoRedo'), keys: [MOD, '(⇧) Z'] }
     ]
   }
-]
+])
 
 async function onCheckUpdates() {
   await updateCheck.check()
   hasChecked.value = true
 }
+
+async function onExportAll() {
+  exporting.value = true
+  try {
+    const result = await exportAllNotes(notes.notes, notes.folders)
+    if (result && result.count === 0) {
+      toast.add({ severity: 'info', summary: t('app.exportAll.nothing'), life: 3000 })
+    } else if (result) {
+      toast.add({
+        severity: 'success',
+        summary: t('app.exportAll.done'),
+        detail: t('app.exportAll.doneDetail', { count: result.count, dir: result.dir }, result.count),
+        life: 5000
+      })
+    }
+    // result null: dialogo annullato, nessun messaggio
+  } catch (err) {
+    toast.add({ severity: 'error', summary: t('app.exportAll.failed'), detail: String(err), life: 5000 })
+  } finally {
+    exporting.value = false
+  }
+}
 </script>
 
 <style scoped>
+.data-path {
+  display: block;
+  font-size: 12px;
+  color: var(--p-text-muted-color);
+  background: var(--sidebar-hover-bg);
+  border-radius: 6px;
+  padding: 6px 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  direction: rtl; /* si tronca a sinistra: la parte finale del percorso e' quella che distingue */
+  text-align: left;
+}
+.btn-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.data-path {
+  margin: 0;
+}
+.badge {
+  margin-left: 6px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--p-text-muted-color);
+  border: 1px solid var(--p-content-border-color);
+  border-radius: 4px;
+  padding: 1px 5px;
+  vertical-align: middle;
+}
+
 .settings-page {
   position: fixed;
   inset: 0;
@@ -347,14 +614,24 @@ async function onCheckUpdates() {
 /* Stessa banda alta 40px delle altre viste, con lo stesso rientro a sinistra:
    i tre tasti finestra sono disegnati sopra la webview e cadrebbero sulla
    freccia. */
+/* Stesse misure della banda del pannello (.note-list-topbar in NoteList,
+   .sidebar-topbar in Sidebar): altezza 40, rientro 74 per i semafori, freccia
+   con 8px di margine e glifo da 16px. La freccia indietro delle impostazioni
+   cade cosi' esattamente sopra quella del pannello, e aprendo le
+   impostazioni non "salta". Sfondo --sidebar-bg come l'header dell'editor. */
 .settings-topbar {
   flex-shrink: 0;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   height: 40px;
   padding: 0 12px 0 74px;
+  background: var(--sidebar-bg);
   border-bottom: 1px solid var(--p-content-border-color);
+}
+.settings-topbar .icon-btn {
+  margin-left: 8px;
+  font-size: 16px;
 }
 .settings-topbar h1 {
   margin: 0;
@@ -368,12 +645,13 @@ async function onCheckUpdates() {
   background: transparent;
   color: var(--icon-color);
   cursor: pointer;
-  padding: 4px;
+  padding: 5px;
   border-radius: 6px;
   font-size: 15px;
   display: flex;
   align-items: center;
   outline: none;
+  flex-shrink: 0;
 }
 .icon-btn:hover {
   background: var(--sidebar-hover-bg);
@@ -514,8 +792,39 @@ async function onCheckUpdates() {
   min-height: 38px;
   padding: 7px 14px;
 }
+/* Riga "impilata" (card Dati): etichetta, percorso e pulsanti uno sotto
+   l'altro, con un respiro fra i tre blocchi. */
 .row-stack {
-  display: block;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+  padding: 14px;
+}
+
+/* PrimeVue Select e Button (Aura) ridotti alla scala della pagina: la
+   dimensione "small" di Aura resta piu' grande dei controlli custom
+   accanto (interruttore, righe da 46px), quindi si ricalibrano font e
+   padding senza toccare il tema globale. */
+.settings-select {
+  flex-shrink: 0;
+  min-width: 160px;
+  font-size: 13px;
+}
+.settings-select :deep(.p-select-label) {
+  padding: 5px 8px;
+  font-size: 13px;
+}
+.settings-select :deep(.p-select-dropdown) {
+  width: 28px;
+}
+.card :deep(.p-button-sm) {
+  font-size: 12px;
+  padding: 5px 10px;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.card :deep(.p-button-sm svg) {
+  font-size: 13px;
 }
 .row.is-disabled .row-text {
   opacity: 0.45;
@@ -572,20 +881,6 @@ async function onCheckUpdates() {
   background: var(--selection-bg);
 }
 
-.settings-select {
-  flex-shrink: 0;
-  background: var(--search-bg);
-  border: 1px solid var(--p-content-border-color);
-  border-radius: 7px;
-  padding: 5px 8px;
-  color: var(--p-text-color);
-  font-family: inherit;
-  font-size: 13px;
-  outline: none;
-}
-.settings-select:disabled {
-  opacity: 0.45;
-}
 
 /* Interruttore per un'impostazione si/no: piu' leggibile di una casella,
    e lo stato si vede dal colore prima ancora che dal segno. */
@@ -619,38 +914,6 @@ async function onCheckUpdates() {
   transform: translateX(16px);
 }
 
-.action-btn {
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  border: 1px solid var(--p-content-border-color);
-  background: transparent;
-  color: var(--p-text-color);
-  cursor: pointer;
-  font-family: inherit;
-  font-size: 12px;
-  padding: 5px 10px;
-  border-radius: 7px;
-}
-.action-btn:hover {
-  background: var(--sidebar-hover-bg);
-}
-.action-btn:disabled {
-  opacity: 0.6;
-  cursor: default;
-}
-.action-btn :deep(svg) {
-  font-size: 13px;
-}
-.action-btn :deep(svg.spin) {
-  animation: settings-spin 1s linear infinite;
-}
-@keyframes settings-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
 
 .keys {
   display: flex;
@@ -700,8 +963,6 @@ kbd {
 .nav-item:focus-visible,
 .segment:focus-visible,
 .switch:focus-visible,
-.action-btn:focus-visible,
-.settings-select:focus-visible,
 .icon-btn:focus-visible {
   outline: 2px solid var(--p-text-color);
   outline-offset: 2px;

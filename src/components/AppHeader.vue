@@ -10,7 +10,7 @@
       <button
         class="icon-btn toggle-btn"
         :class="{ active: sidebarVisible }"
-        :title="sidebarVisible ? 'Nascondi cartelle' : 'Mostra cartelle'"
+        :title="sidebarVisible ? t('header.hideFolders') : t('header.showFolders')"
         @click="emit('toggle-sidebar')"
       >
         <Icon icon="lucide:panel-left" />
@@ -23,7 +23,7 @@
            La cartella si scegle dal pannello laterale (vista cartelle) e la
            nota dalla sua lista: avere anche qui due menu che facevano le
            stesse cose era una seconda strada da mantenere. -->
-      <nav class="crumbs" aria-label="Posizione">
+      <nav class="crumbs" :aria-label="t('header.breadcrumbLabel')">
         <span class="crumb crumb-folder">
           <span class="crumb-label">{{ store.currentViewName }}</span>
         </span>
@@ -43,7 +43,7 @@
     <div id="header-note-actions" class="header-note-actions" data-tauri-drag-region="false"></div>
 
     <div class="header-settings" data-tauri-drag-region="false">
-      <button class="icon-btn" title="Impostazioni (⌘,)" @click="ui.openSettings()">
+      <button class="icon-btn" :title="t('header.settings')" @click="ui.openSettings()">
         <Icon icon="lucide:settings" />
       </button>
     </div>
@@ -53,6 +53,7 @@
 <script setup>
 import { computed } from 'vue'
 import { Icon } from '@iconify/vue'
+import { useI18n } from 'vue-i18n'
 import { useNotesStore } from '../stores/notes'
 import { useUiStore } from '../stores/ui'
 
@@ -66,8 +67,9 @@ const emit = defineEmits(['toggle-sidebar'])
 
 const store = useNotesStore()
 const ui = useUiStore()
+const { t } = useI18n()
 
-const noteTitle = computed(() => store.selectedNote?.title?.trim() || 'Nuova nota')
+const noteTitle = computed(() => store.selectedNote?.title?.trim() || t('common.untitledNote'))
 
 </script>
 

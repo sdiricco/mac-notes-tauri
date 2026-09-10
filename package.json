@@ -1,13 +1,15 @@
 {
-  "name": "mac-notes-tauri",
+  "name": "rustnotes",
   "private": true,
-  "version": "0.9.0",
+  "version": "0.10.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc --noEmit && vite build",
     "preview": "vite preview",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@cyhnkckali/vue3-color-picker": "^2.1.7",
@@ -27,13 +29,17 @@
     "turndown": "^7.2.4",
     "turndown-plugin-gfm": "^1.0.2",
     "uuid": "^14.0.2",
-    "vue": "^3.5.13"
+    "vue": "^3.5.13",
+    "vue-i18n": "^11.4.10"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2",
     "@vitejs/plugin-vue": "^5.2.1",
+    "jsdom": "^30.0.1",
     "typescript": "~5.6.2",
     "vite": "^6.0.3",
+    "vitest": "^3.2.7",
     "vue-tsc": "^2.1.10"
-  }
+  },
+  "license": "MIT"
 }

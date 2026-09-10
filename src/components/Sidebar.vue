@@ -5,16 +5,16 @@
          verso le note, poi ricerca e creazione. La coppia sta in entrambe le
          viste così i pulsanti non cambiano posizione al cambio vista. -->
     <div class="sidebar-topbar">
-      <button class="icon-btn back-btn" title="Cartelle" disabled>
+      <button class="icon-btn back-btn" :title="t('sidebar.folders')" disabled>
         <Icon icon="lucide:arrow-left" />
       </button>
-      <button class="icon-btn" title="Note" @click="ui.showNotes()">
+      <button class="icon-btn" :title="t('store.notes')" @click="ui.showNotes()">
         <Icon icon="lucide:arrow-right" />
       </button>
 
       <GlobalSearch class="search-in-topbar" />
 
-      <button class="icon-btn create-btn" title="Nuova cartella" @click="startNewFolder">
+      <button class="icon-btn create-btn" :title="t('sidebar.newFolder')" @click="startNewFolder">
         <Icon icon="lucide:folder-plus" />
       </button>
     </div>
@@ -26,7 +26,7 @@
         @click="openFolder('all')"
       >
         <Icon icon="lucide:notebook-text" />
-        <span>Tutte le Note</span>
+        <span>{{ t('store.allNotes') }}</span>
         <span class="count">{{ store.allCount }}</span>
       </button>
       <button
@@ -35,7 +35,7 @@
         @click="openFolder('pinned')"
       >
         <Icon icon="lucide:star" />
-        <span>Preferiti</span>
+        <span>{{ t('store.pinned') }}</span>
         <span class="count">{{ store.pinnedCount }}</span>
       </button>
       <button
@@ -44,14 +44,14 @@
         @click="openFolder('trash')"
       >
         <Icon icon="lucide:trash-2" />
-        <span>Cestino</span>
+        <span>{{ t('store.trash') }}</span>
         <span class="count">{{ store.trashCount }}</span>
       </button>
     </nav>
 
     <div class="sidebar-header">
-      <span>Cartelle</span>
-      <button class="icon-btn" title="Nuova cartella" @click="startNewFolder">
+      <span>{{ t('sidebar.folders') }}</span>
+      <button class="icon-btn" :title="t('sidebar.newFolder')" @click="startNewFolder">
         <Icon icon="lucide:plus" />
       </button>
     </div>
@@ -98,7 +98,7 @@
           ref="newFolderInput"
           v-model="newFolderName"
           class="rename-input"
-          placeholder="Nome cartella"
+          :placeholder="t('sidebar.folderNamePlaceholder')"
           @keyup.enter="commitNewFolder"
           @keyup.esc="creatingFolder = false"
           @blur="commitNewFolder"
@@ -112,11 +112,11 @@
       <button
         v-if="updateCheck.available"
         class="update-btn"
-        :title="`Versione ${updateCheck.latestVersion} disponibile (attuale: ${updateCheck.currentVersion})`"
+        :title="t('sidebar.update.availableTitle', { latest: updateCheck.latestVersion, current: updateCheck.currentVersion })"
         @click="onUpdateClick"
       >
         <Icon icon="lucide:arrow-up-circle" />
-        <span>Aggiorna</span>
+        <span>{{ t('sidebar.update.action') }}</span>
       </button>
     </div>
 
@@ -132,16 +132,18 @@
 </template>
 
 <script setup>
-import { nextTick, onBeforeUnmount, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref } from 'vue'
 import ContextMenu from 'primevue/contextmenu'
 import { useConfirm } from 'primevue/useconfirm'
 import { useToast } from 'primevue/usetoast'
 import { Icon } from '@iconify/vue'
+import { useI18n } from 'vue-i18n'
 import GlobalSearch from './GlobalSearch.vue'
 import { useNotesStore } from '../stores/notes'
 import { useUiStore } from '../stores/ui'
 import { useUpdateCheckStore } from '../stores/updateCheck'
 
+const { t } = useI18n()
 const store = useNotesStore()
 const ui = useUiStore()
 const updateCheck = useUpdateCheckStore()
@@ -155,15 +157,15 @@ async function onUpdateClick() {
     await navigator.clipboard.writeText(UPDATE_CMD)
     toast.add({
       severity: 'info',
-      summary: `Versione ${updateCheck.latestVersion} disponibile`,
-      detail: `Comando copiato: ${UPDATE_CMD}`,
+      summary: t('sidebar.update.available', { latest: updateCheck.latestVersion }),
+      detail: t('sidebar.update.commandCopied', { cmd: UPDATE_CMD }),
       life: 4000
     })
   } catch {
     toast.add({
       severity: 'info',
-      summary: `Versione ${updateCheck.latestVersion} disponibile`,
-      detail: `Esegui: ${UPDATE_CMD}`,
+      summary: t('sidebar.update.available', { latest: updateCheck.latestVersion }),
+      detail: t('sidebar.update.runCommand', { cmd: UPDATE_CMD }),
       life: 5000
     })
   }
@@ -267,14 +269,14 @@ const newFolderInput = ref(null)
 
 const menu = ref(null)
 const menuTargetFolder = ref(null)
-const menuItems = ref([
+const menuItems = computed(() => [
   {
-    label: 'Rinomina',
+    label: t('sidebar.menu.rename'),
     icon: 'lucide:pencil',
     command: () => startRename(menuTargetFolder.value)
   },
   {
-    label: 'Elimina cartella',
+    label: t('sidebar.menu.deleteFolder'),
     icon: 'lucide:trash-2',
     command: () => removeFolder(menuTargetFolder.value)
   }
@@ -315,11 +317,11 @@ function commitNewFolder() {
 function removeFolder(folder) {
   if (!folder) return
   confirm.require({
-    message: `Eliminare la cartella "${folder.name}"? Le note verranno spostate nel cestino.`,
-    header: 'Elimina cartella',
+    message: t('sidebar.confirm.deleteFolderMessage', { name: folder.name }),
+    header: t('sidebar.menu.deleteFolder'),
     icon: 'pi pi-exclamation-triangle',
-    acceptLabel: 'Elimina',
-    rejectLabel: 'Annulla',
+    acceptLabel: t('sidebar.confirm.delete'),
+    rejectLabel: t('sidebar.confirm.cancel'),
     acceptClass: 'p-button-danger',
     rejectClass: 'p-button-secondary',
     accept: () => store.deleteFolder(folder.id)

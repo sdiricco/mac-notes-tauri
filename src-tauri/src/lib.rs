@@ -14,16 +14,24 @@ use tauri_plugin_opener::OpenerExt;
 #[tauri::command]
 fn store_load(app: AppHandle) -> Result<Value, String> {
     let data = store::load_data(&app)?;
-    let n = data.get("notes").and_then(Value::as_array).map(|a| a.len()).unwrap_or(0);
-    eprintln!("[mac-notes-tauri] store_load -> {n} note");
+    let n = data
+        .get("notes")
+        .and_then(Value::as_array)
+        .map(|a| a.len())
+        .unwrap_or(0);
+    eprintln!("[rustnotes] store_load -> {n} note");
     Ok(data)
 }
 
 #[tauri::command]
 fn store_save_note(app: AppHandle, note: Value) -> Result<bool, String> {
-    let id = note.get("id").and_then(Value::as_str).unwrap_or("?").to_string();
+    let id = note
+        .get("id")
+        .and_then(Value::as_str)
+        .unwrap_or("?")
+        .to_string();
     store::save_note(&app, &note)?;
-    eprintln!("[mac-notes-tauri] store_save_note -> {id}");
+    eprintln!("[rustnotes] store_save_note -> {id}");
     Ok(true)
 }
 
@@ -45,6 +53,31 @@ fn store_reveal_in_finder(app: AppHandle) -> Result<(), String> {
     app.opener()
         .open_path(dir.display().to_string(), None::<&str>)
         .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn store_data_dir_info(app: AppHandle) -> Result<store::DataDirInfo, String> {
+    store::data_dir_info(&app)
+}
+
+#[tauri::command]
+fn store_inspect_dir(path: String) -> store::DirInspection {
+    store::inspect_dir(&path)
+}
+
+/// `path` None = torna alla cartella predefinita. Il frontend ricarica lo
+/// store subito dopo, perche' l'archivio in uso e' cambiato.
+#[tauri::command]
+fn store_set_data_dir(
+    app: AppHandle,
+    path: Option<String>,
+) -> Result<store::SetDataDirResult, String> {
+    let res = store::set_data_dir(&app, path)?;
+    eprintln!(
+        "[rustnotes] store_set_data_dir -> {} ({})",
+        res.dir, res.mode
+    );
+    Ok(res)
 }
 
 #[tauri::command]
@@ -75,6 +108,15 @@ fn set_window_theme(app: AppHandle, dark: bool) -> Result<(), String> {
     Ok(())
 }
 
+// Ricostruisce il menu nativo nella lingua scelta. Chiamato dal frontend
+// all'avvio (con la preferenza salvata) e a ogni cambio lingua.
+#[tauri::command]
+fn set_menu_language(app: AppHandle, lang: String) -> Result<(), String> {
+    let m = menu::build_menu(&app, &lang).map_err(|e| e.to_string())?;
+    app.set_menu(m).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -82,7 +124,14 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
             let handle = app.handle().clone();
-            let m = menu::build_menu(&handle)?;
+            match store::migrate_legacy(&handle) {
+                Ok(Some(n)) => eprintln!(
+                    "[rustnotes] migrate_legacy -> {n} note copiate dalla cartella precedente"
+                ),
+                Ok(None) => {}
+                Err(e) => eprintln!("[rustnotes] migrate_legacy ERRORE: {e}"),
+            }
+            let m = menu::build_menu(&handle, menu::system_lang())?;
             app.set_menu(m)?;
 
             // Il controllo automatico periodico e' limitato alla build
@@ -113,10 +162,16 @@ pub fn run() {
             store_delete_note,
             store_save_folders,
             store_reveal_in_finder,
+            store_data_dir_info,
+            store_inspect_dir,
+            store_set_data_dir,
+            file_transfer::pick_folder,
             update_check_run,
             update_check_app_version,
             set_window_theme,
+            set_menu_language,
             file_transfer::export_md,
+            file_transfer::export_all_md,
             file_transfer::import_md,
             file_transfer::pick_image,
             file_transfer::read_local_image,

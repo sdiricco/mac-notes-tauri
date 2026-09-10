@@ -7,7 +7,7 @@
     <button
       class="icon-btn"
       :class="{ active: panelOpen }"
-      :title="`Cerca in tutte le note (${searchHint})`"
+      :title="t('search.searchAllNotesHint', { hint: searchHint })"
       @click="toggle"
     >
       <Icon icon="lucide:search" />
@@ -30,13 +30,13 @@
               ref="inputEl"
               v-model="query"
               type="text"
-              placeholder="Cerca in tutte le note"
+              :placeholder="t('search.searchAllNotes')"
               @keydown.esc.stop="close"
               @keydown.down.prevent="move(1)"
               @keydown.up.prevent="move(-1)"
               @keydown.enter.prevent="openHighlighted"
             />
-            <button v-if="query" class="clear-btn" title="Cancella" @click="clearQuery">
+            <button v-if="query" class="clear-btn" :title="t('search.clear')" @click="clearQuery">
               <Icon icon="lucide:x" />
             </button>
             <!-- A tutta pagina non c'e' velo da cliccare per uscire: serve un
@@ -44,7 +44,7 @@
             <button
               v-if="ui.narrow"
               class="clear-btn close-btn"
-              title="Chiudi"
+              :title="t('search.close')"
               @click="close"
             >
               <Icon icon="lucide:x" />
@@ -54,10 +54,10 @@
           <!-- Scorre solo l'elenco: il campo resta in vista mentre si sfoglia,
                e il riquadro non cambia altezza a ogni tasto. -->
           <div class="panel-body">
-            <div class="panel-label">{{ query.trim() ? 'Risultati' : 'Note recenti' }}</div>
+            <div class="panel-label">{{ query.trim() ? t('search.results') : t('search.recentNotes') }}</div>
 
             <p v-if="!items.length" class="panel-empty">
-              {{ query.trim() ? `Nessun risultato per "${query}"` : 'Nessuna nota' }}
+              {{ query.trim() ? t('search.noResults', { query }) : t('search.noNotes') }}
             </p>
 
             <button
@@ -70,7 +70,7 @@
             >
               <span class="result-top">
                 <Icon v-if="item.note.pinned" icon="lucide:star" class="pin-icon" />
-                <span class="result-title">{{ item.note.title || 'Nuova nota' }}</span>
+                <span class="result-title">{{ item.note.title || t('common.untitledNote') }}</span>
               </span>
               <span class="result-meta">
                 <Icon :icon="item.note.trashed ? 'lucide:trash-2' : 'lucide:folder'" />
@@ -89,6 +89,7 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { Icon } from '@iconify/vue'
+import { useI18n } from 'vue-i18n'
 import { useNotesStore } from '../stores/notes'
 import { useUiStore } from '../stores/ui'
 import { stripHtml } from '../utils/markdown'
@@ -97,6 +98,7 @@ import { isMac } from '../utils/shortcuts'
 
 const store = useNotesStore()
 const ui = useUiStore()
+const { t } = useI18n()
 
 const panelOpen = ref(false)
 const query = ref('')
@@ -144,9 +146,9 @@ const results = computed(() => {
 const items = computed(() => (query.value.trim() ? results.value : recents.value))
 
 function folderNameFor(note) {
-  if (note.trashed) return 'Cestino'
+  if (note.trashed) return t('store.trash')
   const folder = store.folders.find((f) => f.id === note.folderId)
-  return folder ? folder.name : 'Senza cartella'
+  return folder ? folder.name : t('search.noFolder')
 }
 
 // Estratto centrato sulla prima occorrenza, così si vede *perché* la nota è

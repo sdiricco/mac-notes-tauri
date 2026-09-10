@@ -46,7 +46,7 @@
         class="divider"
         role="separator"
         aria-orientation="vertical"
-        aria-label="Ridimensiona il pannello laterale"
+        :aria-label="$t('app.resizeSidebar')"
         @mousedown="startDrag($event)"
         @dblclick="resetPane()"
       ></div>
@@ -219,7 +219,7 @@ onMounted(async () => {
   unsubscribers.push(
     api.onMenu('menu:new-note', () => store.createNote()),
     api.onMenu('menu:new-folder', () => {
-      const folder = store.createFolder('Nuova cartella')
+      const folder = store.createFolder()
       store.selectFolder(folder.id)
     }),
     api.onMenu('menu:duplicate-note', () => {

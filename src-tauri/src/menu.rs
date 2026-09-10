@@ -13,14 +13,255 @@
 use tauri::menu::{Menu, MenuBuilder, MenuItem, PredefinedMenuItem, SubmenuBuilder};
 use tauri::{AppHandle, Emitter, Wry};
 
-pub fn build_menu(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
-    let app_menu = SubmenuBuilder::new(app, "mac-notes-tauri")
+/// Etichette del menu nativo. Il menu vive in Rust, fuori dalla webview,
+/// quindi non puo' usare vue-i18n: ha la sua tabella, una riga per lingua,
+/// e il frontend lo ricostruisce con `set_menu_language` quando l'utente
+/// cambia lingua nelle impostazioni. Tenere le chiavi allineate con
+/// src/i18n/*/app.js non e' automatico: sono poche voci e cambiano di rado.
+struct Labels {
+    settings: &'static str,
+    file: &'static str,
+    new_note: &'static str,
+    new_folder: &'static str,
+    duplicate_note: &'static str,
+    edit: &'static str,
+    undo: &'static str,
+    redo: &'static str,
+    cut: &'static str,
+    copy: &'static str,
+    paste: &'static str,
+    select_all: &'static str,
+    find_in_note: &'static str,
+    search_all: &'static str,
+    view: &'static str,
+    toggle_sidebar: &'static str,
+    shortcuts: &'static str,
+    window: &'static str,
+    help: &'static str,
+    help_repo: &'static str,
+}
+
+const EN: Labels = Labels {
+    settings: "Settings…",
+    file: "File",
+    new_note: "New Note",
+    new_folder: "New Folder",
+    duplicate_note: "Duplicate Note",
+    edit: "Edit",
+    undo: "Undo",
+    redo: "Redo",
+    cut: "Cut",
+    copy: "Copy",
+    paste: "Paste",
+    select_all: "Select All",
+    find_in_note: "Find in Note",
+    search_all: "Search All Notes",
+    view: "View",
+    toggle_sidebar: "Show/Hide Sidebar",
+    shortcuts: "Keyboard Shortcuts",
+    window: "Window",
+    help: "Help",
+    help_repo: "GitHub Repository",
+};
+
+const IT: Labels = Labels {
+    settings: "Impostazioni…",
+    file: "File",
+    new_note: "Nuova Nota",
+    new_folder: "Nuova Cartella",
+    duplicate_note: "Duplica Nota",
+    edit: "Modifica",
+    undo: "Annulla",
+    redo: "Ripeti",
+    cut: "Taglia",
+    copy: "Copia",
+    paste: "Incolla",
+    select_all: "Seleziona Tutto",
+    find_in_note: "Cerca nella nota",
+    search_all: "Cerca in tutte le note",
+    view: "Vista",
+    toggle_sidebar: "Mostra/Nascondi Sidebar",
+    shortcuts: "Scorciatoie da tastiera",
+    window: "Finestra",
+    help: "Aiuto",
+    help_repo: "Repository su GitHub",
+};
+
+const ES: Labels = Labels {
+    settings: "Ajustes…",
+    file: "Archivo",
+    new_note: "Nueva nota",
+    new_folder: "Nueva carpeta",
+    duplicate_note: "Duplicar nota",
+    edit: "Edición",
+    undo: "Deshacer",
+    redo: "Rehacer",
+    cut: "Cortar",
+    copy: "Copiar",
+    paste: "Pegar",
+    select_all: "Seleccionar todo",
+    find_in_note: "Buscar en la nota",
+    search_all: "Buscar en todas las notas",
+    view: "Visualización",
+    toggle_sidebar: "Mostrar/ocultar barra lateral",
+    shortcuts: "Atajos de teclado",
+    window: "Ventana",
+    help: "Ayuda",
+    help_repo: "Repositorio en GitHub",
+};
+
+const FR: Labels = Labels {
+    settings: "Réglages…",
+    file: "Fichier",
+    new_note: "Nouvelle note",
+    new_folder: "Nouveau dossier",
+    duplicate_note: "Dupliquer la note",
+    edit: "Édition",
+    undo: "Annuler",
+    redo: "Rétablir",
+    cut: "Couper",
+    copy: "Copier",
+    paste: "Coller",
+    select_all: "Tout sélectionner",
+    find_in_note: "Rechercher dans la note",
+    search_all: "Rechercher dans toutes les notes",
+    view: "Présentation",
+    toggle_sidebar: "Afficher/masquer la barre latérale",
+    shortcuts: "Raccourcis clavier",
+    window: "Fenêtre",
+    help: "Aide",
+    help_repo: "Dépôt GitHub",
+};
+
+const DE: Labels = Labels {
+    settings: "Einstellungen…",
+    file: "Ablage",
+    new_note: "Neue Notiz",
+    new_folder: "Neuer Ordner",
+    duplicate_note: "Notiz duplizieren",
+    edit: "Bearbeiten",
+    undo: "Widerrufen",
+    redo: "Wiederholen",
+    cut: "Ausschneiden",
+    copy: "Kopieren",
+    paste: "Einsetzen",
+    select_all: "Alles auswählen",
+    find_in_note: "In Notiz suchen",
+    search_all: "In allen Notizen suchen",
+    view: "Darstellung",
+    toggle_sidebar: "Seitenleiste ein-/ausblenden",
+    shortcuts: "Tastaturkurzbefehle",
+    window: "Fenster",
+    help: "Hilfe",
+    help_repo: "GitHub-Repository",
+};
+
+const PT: Labels = Labels {
+    settings: "Ajustes…",
+    file: "Arquivo",
+    new_note: "Nova Nota",
+    new_folder: "Nova Pasta",
+    duplicate_note: "Duplicar Nota",
+    edit: "Editar",
+    undo: "Desfazer",
+    redo: "Refazer",
+    cut: "Recortar",
+    copy: "Copiar",
+    paste: "Colar",
+    select_all: "Selecionar Tudo",
+    find_in_note: "Buscar na Nota",
+    search_all: "Buscar em Todas as Notas",
+    view: "Visualizar",
+    toggle_sidebar: "Mostrar/Ocultar Barra Lateral",
+    shortcuts: "Atalhos de Teclado",
+    window: "Janela",
+    help: "Ajuda",
+    help_repo: "Repositório no GitHub",
+};
+
+const ZH: Labels = Labels {
+    settings: "设置…",
+    file: "文件",
+    new_note: "新建备忘录",
+    new_folder: "新建文件夹",
+    duplicate_note: "复制备忘录",
+    edit: "编辑",
+    undo: "撤销",
+    redo: "重做",
+    cut: "剪切",
+    copy: "拷贝",
+    paste: "粘贴",
+    select_all: "全选",
+    find_in_note: "在备忘录中查找",
+    search_all: "搜索所有备忘录",
+    view: "显示",
+    toggle_sidebar: "显示/隐藏边栏",
+    shortcuts: "键盘快捷键",
+    window: "窗口",
+    help: "帮助",
+    help_repo: "GitHub 仓库",
+};
+
+const JA: Labels = Labels {
+    settings: "設定…",
+    file: "ファイル",
+    new_note: "新規メモ",
+    new_folder: "新規フォルダ",
+    duplicate_note: "メモを複製",
+    edit: "編集",
+    undo: "取り消す",
+    redo: "やり直す",
+    cut: "カット",
+    copy: "コピー",
+    paste: "ペースト",
+    select_all: "すべてを選択",
+    find_in_note: "メモ内を検索",
+    search_all: "すべてのメモを検索",
+    view: "表示",
+    toggle_sidebar: "サイドバーを表示/非表示",
+    shortcuts: "キーボードショートカット",
+    window: "ウインドウ",
+    help: "ヘルプ",
+    help_repo: "GitHub リポジトリ",
+};
+
+fn labels(lang: &str) -> &'static Labels {
+    match lang {
+        "it" => &IT,
+        "es" => &ES,
+        "fr" => &FR,
+        "de" => &DE,
+        "pt" => &PT,
+        "zh" => &ZH,
+        "ja" => &JA,
+        _ => &EN,
+    }
+}
+
+/// Lingue supportate, allineate a SUPPORTED_LOCALES in src/i18n/index.js.
+const SUPPORTED: &[&str] = &["en", "it", "es", "fr", "de", "pt", "zh", "ja"];
+
+/// Lingua iniziale del menu, prima che il frontend comunichi la preferenza
+/// salvata: quella di sistema se supportata, altrimenti inglese. Lo stesso
+/// criterio di resolveLocale() in src/i18n/index.js.
+pub fn system_lang() -> &'static str {
+    let sys = sys_locale::get_locale().unwrap_or_default().to_lowercase();
+    SUPPORTED
+        .iter()
+        .find(|l| sys.starts_with(*l))
+        .copied()
+        .unwrap_or("en")
+}
+
+pub fn build_menu(app: &AppHandle, lang: &str) -> tauri::Result<Menu<Wry>> {
+    let l = labels(lang);
+    let app_menu = SubmenuBuilder::new(app, "RustNotes")
         .item(&PredefinedMenuItem::about(app, None, None)?)
         .separator()
         .item(&MenuItem::with_id(
             app,
             "settings",
-            "Impostazioni…",
+            l.settings,
             true,
             Some("CmdOrCtrl+,"),
         )?)
@@ -34,19 +275,25 @@ pub fn build_menu(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
         .item(&PredefinedMenuItem::quit(app, None)?)
         .build()?;
 
-    let file_menu = SubmenuBuilder::new(app, "File")
-        .item(&MenuItem::with_id(app, "new-note", "Nuova Nota", true, Some("CmdOrCtrl+N"))?)
+    let file_menu = SubmenuBuilder::new(app, l.file)
+        .item(&MenuItem::with_id(
+            app,
+            "new-note",
+            l.new_note,
+            true,
+            Some("CmdOrCtrl+N"),
+        )?)
         .item(&MenuItem::with_id(
             app,
             "new-folder",
-            "Nuova Cartella",
+            l.new_folder,
             true,
             Some("CmdOrCtrl+Shift+N"),
         )?)
         .item(&MenuItem::with_id(
             app,
             "duplicate-note",
-            "Duplica Nota",
+            l.duplicate_note,
             true,
             Some("CmdOrCtrl+D"),
         )?)
@@ -54,54 +301,60 @@ pub fn build_menu(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
         .item(&PredefinedMenuItem::close_window(app, None)?)
         .build()?;
 
-    let edit_menu = SubmenuBuilder::new(app, "Modifica")
-        .item(&PredefinedMenuItem::undo(app, Some("Annulla"))?)
-        .item(&PredefinedMenuItem::redo(app, Some("Ripeti"))?)
+    let edit_menu = SubmenuBuilder::new(app, l.edit)
+        .item(&PredefinedMenuItem::undo(app, Some(l.undo))?)
+        .item(&PredefinedMenuItem::redo(app, Some(l.redo))?)
         .separator()
-        .item(&PredefinedMenuItem::cut(app, Some("Taglia"))?)
-        .item(&PredefinedMenuItem::copy(app, Some("Copia"))?)
-        .item(&PredefinedMenuItem::paste(app, Some("Incolla"))?)
-        .item(&PredefinedMenuItem::select_all(app, Some("Seleziona Tutto"))?)
+        .item(&PredefinedMenuItem::cut(app, Some(l.cut))?)
+        .item(&PredefinedMenuItem::copy(app, Some(l.copy))?)
+        .item(&PredefinedMenuItem::paste(app, Some(l.paste))?)
+        .item(&PredefinedMenuItem::select_all(app, Some(l.select_all))?)
         .separator()
         .item(&MenuItem::with_id(
             app,
             "find-in-note",
-            "Cerca nella nota",
+            l.find_in_note,
             true,
             Some("CmdOrCtrl+F"),
         )?)
         .item(&MenuItem::with_id(
             app,
             "search-all",
-            "Cerca in tutte le note",
+            l.search_all,
             true,
             Some("CmdOrCtrl+Shift+F"),
         )?)
         .build()?;
 
-    let view_menu = SubmenuBuilder::new(app, "Vista")
+    let view_menu = SubmenuBuilder::new(app, l.view)
         .item(&MenuItem::with_id(
             app,
             "toggle-sidebar",
-            "Mostra/Nascondi Sidebar",
+            l.toggle_sidebar,
             true,
             Some("CmdOrCtrl+/"),
         )?)
-        .item(&MenuItem::with_id(app, "shortcuts", "Scorciatoie da tastiera", true, None::<&str>)?)
+        .item(&MenuItem::with_id(
+            app,
+            "shortcuts",
+            l.shortcuts,
+            true,
+            None::<&str>,
+        )?)
         .separator()
         .item(&PredefinedMenuItem::fullscreen(app, None)?)
         .build()?;
 
-    let window_menu = SubmenuBuilder::new(app, "Finestra")
+    let window_menu = SubmenuBuilder::new(app, l.window)
         .item(&PredefinedMenuItem::minimize(app, None)?)
         .item(&PredefinedMenuItem::maximize(app, None)?)
         .build()?;
 
-    let help_menu = SubmenuBuilder::new(app, "Aiuto")
+    let help_menu = SubmenuBuilder::new(app, l.help)
         .item(&MenuItem::with_id(
             app,
             "help-repo",
-            "Repository su GitHub",
+            l.help_repo,
             true,
             None::<&str>,
         )?)
@@ -120,7 +373,7 @@ pub fn build_menu(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
 /// Dispatcher centrale: a differenza di Electron (una `click` per voce), qui
 /// tutti gli eventi menu arrivano a un solo handler distinto per `id`.
 pub fn handle_menu_event(app: &AppHandle, event_id: &str) {
-    eprintln!("[mac-notes-tauri] menu event: {event_id}");
+    eprintln!("[rustnotes] menu event: {event_id}");
 
     // Nessuna voce porta piu' un payload (l'unica era il radio della
     // toolbar, ora rimosso): il canale basta.
@@ -139,7 +392,9 @@ pub fn handle_menu_event(app: &AppHandle, event_id: &str) {
         "shortcuts" => send("menu:shortcuts"),
         "help-repo" => {
             use tauri_plugin_opener::OpenerExt;
-            let _ = app.opener().open_url("https://github.com", None::<&str>);
+            let _ = app
+                .opener()
+                .open_url("https://github.com/sdiricco/mac-notes-tauri", None::<&str>);
         }
         _ => {}
     }

@@ -2,5 +2,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-    mac_notes_tauri_lib::run()
+    rustnotes_lib::run()
 }

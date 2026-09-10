@@ -50,11 +50,11 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tagName: ${{ github.ref_name }}
-          releaseName: 'Mac Notes Tauri ${{ github.ref_name }}'
+          releaseName: 'RustNotes ${{ github.ref_name }}'
           releaseBody: |
             macOS: l'app non e' firmata con un certificato Apple Developer ID.
             Al primo avvio, tasto destro sull'app > Apri, oppure:
-            `xattr -dr com.apple.quarantine "/Applications/Mac Notes Tauri.app"`
+            `xattr -dr com.apple.quarantine "/Applications/RustNotes.app"`
 
             Windows e Linux: compilati automaticamente ma non ancora testati
             a mano su questo progetto.
@@ -97,7 +97,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tagName: ${{ github.ref_name }}
-          releaseName: 'Mac Notes Tauri ${{ github.ref_name }}'
+          releaseName: 'RustNotes ${{ github.ref_name }}'
           releaseDraft: true
           prerelease: false
           args: --target ${{ matrix.target }}
@@ -144,6 +144,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tagName: ${{ github.ref_name }}
-          releaseName: 'Mac Notes Tauri ${{ github.ref_name }}'
+          releaseName: 'RustNotes ${{ github.ref_name }}'
           releaseDraft: true
           prerelease: false

@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { invoke } from '@tauri-apps/api/core'
+import { resolveLocale, setLocale } from '../i18n'
 
 const KEY = 'mac-notes-settings'
 const media = window.matchMedia('(prefers-color-scheme: dark)')
@@ -28,6 +29,13 @@ export function applyThemeEarly() {
   invoke('set_window_theme', { dark }).catch(() => {})
 }
 
+// Come applyThemeEarly: la lingua va impostata prima del mount, altrimenti il
+// primo render esce in inglese (fallback) e poi salta all'italiano.
+export function applyLocaleEarly() {
+  const { language = 'system' } = loadSaved()
+  setLocale(resolveLocale(language))
+}
+
 export const useSettingsStore = defineStore('settings', {
   state: () => ({
     theme: 'system', // 'system' | 'light' | 'dark'
@@ -36,6 +44,7 @@ export const useSettingsStore = defineStore('settings', {
     pinnedOnly: false,
     spellcheck: false, // correzione ortografica disattivata di default
     spellLang: 'it', // lingua della correzione quando attiva
+    language: 'system', // 'system' | 'en' | 'it' — lingua dell'interfaccia
     ...loadSaved()
   }),
 
@@ -46,6 +55,7 @@ export const useSettingsStore = defineStore('settings', {
   actions: {
     init() {
       this.applyTheme()
+      this.applyLanguage()
       media.addEventListener('change', () => {
         if (this.theme === 'system') this.applyTheme()
       })
@@ -54,6 +64,20 @@ export const useSettingsStore = defineStore('settings', {
     applyTheme() {
       document.documentElement.classList.toggle('dark-mode', this.isDark)
       invoke('set_window_theme', { dark: this.isDark }).catch(() => {})
+    },
+
+    // Aggiorna sia la webview (vue-i18n) sia il menu nativo, che vive in
+    // Rust e ha la sua tabella di etichette (menu.rs).
+    applyLanguage() {
+      const locale = resolveLocale(this.language)
+      setLocale(locale)
+      invoke('set_menu_language', { lang: locale }).catch(() => {})
+    },
+
+    setLanguage(language) {
+      this.language = language
+      this.applyLanguage()
+      this.save()
     },
 
     setTheme(theme) {
@@ -102,7 +126,8 @@ export const useSettingsStore = defineStore('settings', {
           sortDir: this.sortDir,
           pinnedOnly: this.pinnedOnly,
           spellcheck: this.spellcheck,
-          spellLang: this.spellLang
+          spellLang: this.spellLang,
+          language: this.language
         })
       )
     }

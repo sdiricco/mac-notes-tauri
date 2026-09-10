@@ -42,25 +42,43 @@ pub async fn check(current_version: String) -> UpdateStatus {
     let result = reqwest::Client::new()
         .get(&url)
         .header("Accept", "application/vnd.github+json")
-        .header("User-Agent", "mac-notes-tauri")
+        .header("User-Agent", "rustnotes")
         .send()
         .await;
 
     // Offline o rate limit: nessun problema, si riprova al prossimo giro
     // (stessa scelta dell'originale: fallire in silenzio).
     let Ok(res) = result else {
-        return UpdateStatus { available: false, current_version, latest_version: None, url: None };
+        return UpdateStatus {
+            available: false,
+            current_version,
+            latest_version: None,
+            url: None,
+        };
     };
     if !res.status().is_success() {
-        return UpdateStatus { available: false, current_version, latest_version: None, url: None };
+        return UpdateStatus {
+            available: false,
+            current_version,
+            latest_version: None,
+            url: None,
+        };
     }
     let Ok(data) = res.json::<Value>().await else {
-        return UpdateStatus { available: false, current_version, latest_version: None, url: None };
+        return UpdateStatus {
+            available: false,
+            current_version,
+            latest_version: None,
+            url: None,
+        };
     };
 
     let tag = data.get("tag_name").and_then(Value::as_str).unwrap_or("");
     let latest = tag.strip_prefix('v').unwrap_or(tag).to_string();
-    let html_url = data.get("html_url").and_then(Value::as_str).map(String::from);
+    let html_url = data
+        .get("html_url")
+        .and_then(Value::as_str)
+        .map(String::from);
 
     if !latest.is_empty() && is_newer(&latest, &current_version) {
         UpdateStatus {
@@ -70,7 +88,12 @@ pub async fn check(current_version: String) -> UpdateStatus {
             url: html_url,
         }
     } else {
-        UpdateStatus { available: false, current_version, latest_version: None, url: None }
+        UpdateStatus {
+            available: false,
+            current_version,
+            latest_version: None,
+            url: None,
+        }
     }
 }
 

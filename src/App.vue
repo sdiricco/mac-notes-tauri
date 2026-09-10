@@ -306,7 +306,7 @@ onBeforeUnmount(() => {
   position: absolute;
   top: 0;
   left: 0;
-  height: 40px;
+  height: 38px;
   z-index: 10;
 }
 
@@ -361,13 +361,16 @@ onBeforeUnmount(() => {
    pulsanti (indietro, cerca, nuova nota) e questa striscia sta sopra di
    loro, quindi allargandola ne intercetta i click e li rende inerti — non
    c'entrano i drag region, e' l'elemento sovrapposto a ricevere il click.
-   Larghezza fissa: i tre tasti finestra occupano ~68px da x:14. */
+   Geometria dei semafori decisa da AppKit con la NSToolbar compatta (vedi
+   src-tauri/src/titlebar.rs, che la logga all'avvio): barra alta 38px,
+   bottoni da x=12 a x=66. Le bande dell'app sono alte 38 per lo stesso
+   motivo: cosi' i semafori risultano centrati per costruzione. */
 .browse-drag {
   position: absolute;
   top: 0;
   left: 0;
-  width: 74px;
-  height: 40px;
+  width: 72px;
+  height: 38px;
   z-index: 10;
 }
 

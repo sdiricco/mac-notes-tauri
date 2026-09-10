@@ -28,5 +28,19 @@ reqwest = { version = "0.12", default-features = false, features = ["json", "rus
 tokio = { version = "1", features = ["time"] }
 sys-locale = "0.3"
 
+# Solo macOS: barra del titolo alta con NSToolbar vuota (titlebar.rs). Stesse
+# versioni gia' usate da tao, quindi nessuna crate in piu' da compilare.
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = "0.6"
+objc2-foundation = { version = "0.3", features = ["NSGeometry"] }
+objc2-app-kit = { version = "0.3", features = [
+    "NSToolbar",
+    "NSWindow",
+    "NSButton",
+    "NSControl",
+    "NSView",
+    "NSResponder",
+] }
+
 [dev-dependencies]
 tempfile = "3"

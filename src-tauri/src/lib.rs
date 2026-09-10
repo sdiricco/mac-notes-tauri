@@ -5,6 +5,7 @@
 mod file_transfer;
 mod menu;
 mod store;
+mod titlebar;
 mod update_check;
 mod zoom;
 
@@ -134,6 +135,10 @@ pub fn run() {
             }
             let m = menu::build_menu(&handle, menu::system_lang())?;
             app.set_menu(m)?;
+
+            if let Some(window) = app.get_webview_window("main") {
+                titlebar::install(&window);
+            }
 
             // Zoom salvato: riapplicato subito, prima che la pagina si veda.
             let saved = store::zoom_get(&handle);

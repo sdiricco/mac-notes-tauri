@@ -86,9 +86,9 @@ Documented rather than hidden. Decisions, not oversights:
 
 - **Not code-signed** (macOS Gatekeeper / Windows SmartScreen warnings). Certificates
   cost money every year; the project is free and stays free. Instructions above.
-- **Windows and Linux are untested by a human.** They compile in CI. The header is
-  designed around macOS traffic lights and may show an empty strip on other OSes.
-  Reports and screenshots are very welcome.
+- **Windows and Linux are untested by a human.** They compile in CI. The header
+  leaves room on the left for the macOS window buttons and may show an empty
+  strip on other OSes. Reports and screenshots are very welcome.
 - **No auto-update** outside Homebrew. A minisign-based updater (no certificate
   needed) is on the list.
 - **No sync of its own.** By design there is no account or server. Put the notes

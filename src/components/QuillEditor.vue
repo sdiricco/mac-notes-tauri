@@ -393,35 +393,6 @@ const G_HISTORY = group(
   `<button class="ql-redo" type="button">${REDO_ICON}</button>`
 )
 
-// Zoom dell'interfaccia nel design classico: lente con meno, percentuale
-// (che riporta al 100% con un clic), lente con piu'. Glifi lucide
-// zoom-out/zoom-in, stesso trattamento di undo/redo. La percentuale la
-// aggiorna updateZoomLabel, anche quando lo zoom arriva dal menu nativo.
-const ZOOM_OUT_ICON = `
-  <svg viewBox="0 0 24 24">
-    <g class="ql-stroke" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="2">
-      <circle cx="11" cy="11" r="8"></circle>
-      <path d="m21 21-4.3-4.3"></path>
-      <path d="M8 11h6"></path>
-    </g>
-  </svg>
-`
-const ZOOM_IN_ICON = `
-  <svg viewBox="0 0 24 24">
-    <g class="ql-stroke" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="2">
-      <circle cx="11" cy="11" r="8"></circle>
-      <path d="m21 21-4.3-4.3"></path>
-      <path d="M11 8v6"></path>
-      <path d="M8 11h6"></path>
-    </g>
-  </svg>
-`
-const G_ZOOM = group(
-  `<button class="ql-zoom-out" type="button">${ZOOM_OUT_ICON}</button>`,
-  `<button class="ql-zoom-reset" type="button">100%</button>`,
-  `<button class="ql-zoom-in" type="button">${ZOOM_IN_ICON}</button>`
-)
-
 // Elenchi come tre bottoni e non come picker: la barra scorre in orizzontale
 // (vedi .floating-toolbar in NoteEditor), e ogni pannello a comparsa al suo
 // interno va riposizionato a mano per non essere ritagliato. Tre bottoni
@@ -555,7 +526,7 @@ const G_COLOR = colorDropdown() + highlightDropdown()
 // .ql-formats. Niente menu condensato e niente overflow "⋯": a larghezza
 // insufficiente la barra scorre in orizzontale.
 const TOOLBAR_HTML =
-  G_ZOOM + G_HISTORY + G_HEADER + G_LIST + G_INLINE + G_COLOR + G_SCRIPT + G_ALIGN + G_INSERT + G_CLEAN
+  G_HISTORY + G_HEADER + G_LIST + G_INLINE + G_COLOR + G_SCRIPT + G_ALIGN + G_INSERT + G_CLEAN
 
 // Tooltip di ogni controllo, con la relativa scorciatoia. Applicati dopo
 // l'init di Quill (vedi applyToolbarTooltips) invece che come attributi title
@@ -575,9 +546,6 @@ const TOOLBAR_HTML =
 // Computed e non costante: le etichette cambiano con la lingua, e vengono
 // riapplicate al DOM dal watch su `locale` più sotto.
 const TOOLBAR_TOOLTIPS = computed(() => [
-  ['button.ql-zoom-out', `${t('quill.toolbar.zoomOut')} (${shortcut('mod+-')})`],
-  ['button.ql-zoom-reset', `${t('quill.toolbar.zoomReset')} (${shortcut('mod+0')})`],
-  ['button.ql-zoom-in', `${t('quill.toolbar.zoomIn')} (${shortcut('mod++')})`],
   ['button.ql-undo', `${t('quill.toolbar.undo')} (${shortcut('mod+Z')})`],
   ['button.ql-redo', `${t('quill.toolbar.redo')} (${shortcut('mod+shift+Z')})`],
   ['.ql-header .ql-picker-label', t('quill.toolbar.heading')],
@@ -632,14 +600,6 @@ function onToolbarPointerOver(event) {
   if (el) showTooltip(el)
   else hideTooltip()
 }
-
-// Percentuale nel bottone centrale del gruppo zoom. Legge il DOM della
-// toolbar (gestito da Quill, non da Vue), come applyToolbarTooltips.
-function updateZoomLabel(factor) {
-  const el = quill?.getModule('toolbar')?.container?.querySelector('button.ql-zoom-reset')
-  if (el) el.textContent = `${Math.round(factor * 100)}%`
-}
-let offZoomChanged = null
 
 function applyToolbarTooltips(container) {
   if (!container) return
@@ -1422,12 +1382,7 @@ onMounted(async () => {
           },
           redo() {
             this.quill.history.redo()
-          },
-          // Lo zoom non tocca il documento: delega a Rust, che applica,
-          // salva e notifica (zoom:changed -> updateZoomLabel).
-          'zoom-in': () => api.zoomIn(),
-          'zoom-out': () => api.zoomOut(),
-          'zoom-reset': () => api.zoomReset()
+          }
         }
       },
       table: true,
@@ -1518,10 +1473,6 @@ onMounted(async () => {
   }
 
   applyToolbarTooltips(quill.getModule('toolbar').container)
-  // Percentuale zoom: valore salvato all'avvio, poi ogni cambiamento (anche
-  // dal menu nativo) arriva via evento.
-  offZoomChanged = api.onZoomChanged(updateZoomLabel)
-  api.zoomGet().then(updateZoomLabel).catch(() => {})
 
   loadContent(props.content)
   applySpellcheck()
@@ -1591,7 +1542,6 @@ onBeforeUnmount(() => {
     tipHost.removeEventListener('scroll', hideTooltip)
   }
   hideTooltip()
-  offZoomChanged?.()
   quill = null
 })
 </script>

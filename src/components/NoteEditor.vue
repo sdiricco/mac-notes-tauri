@@ -493,21 +493,6 @@ async function copyNote() {
 .floating-toolbar :deep(button.ql-active) {
   background: var(--selection-bg);
 }
-/* Percentuale dello zoom: l'unico bottone di testo della barra. Larghezza
-   fissa in ch cosi' "80%" e "150%" non fanno ballare i vicini; tabular-nums
-   per la stessa ragione. */
-.floating-toolbar :deep(button.ql-zoom-reset) {
-  width: auto;
-  min-width: 4.5ch;
-  padding: 2px 4px;
-  font-size: 11px;
-  font-variant-numeric: tabular-nums;
-  color: var(--icon-color);
-  font-family: inherit;
-}
-.floating-toolbar :deep(button.ql-zoom-reset:hover) {
-  color: var(--p-text-color);
-}
 
 .floating-toolbar :deep(.ql-stroke) {
   stroke: var(--icon-color);

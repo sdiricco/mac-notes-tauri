@@ -19,7 +19,7 @@ CONFIG="$CONFIG_DIR/config.json"
 OUT=docs/assets
 DEMO="$(mktemp -d /tmp/rustnotes-demo.XXXXXX)"
 BACKUP="$(mktemp /tmp/rustnotes-config-backup.XXXXXX)"
-WID_SWIFT="$(mktemp /tmp/rustnotes-wid.XXXXXX.swift)"
+WID_SWIFT="$(mktemp -d /tmp/rustnotes-wid.XXXXXX)/wid.swift"
 
 if pgrep -x rustnotes >/dev/null; then echo "Chiudi RustNotes prima di eseguire lo script."; exit 1; fi
 [ -x "$BIN" ] || { echo "Build del bundle release…"; pnpm tauri build --bundles app; }
@@ -71,8 +71,8 @@ mkdir -p "$CONFIG_DIR"
 restore() {
   if [ -s "$BACKUP" ]; then cp "$BACKUP" "$CONFIG"; else rm -f "$CONFIG"; fi
   # impostazioni della webview (tema/lingua) come erano prima
-  RUSTNOTES_DEMO_RESTORE=1 "$BIN" >/dev/null 2>&1 & pid=$!; sleep 4; kill "$pid" 2>/dev/null || true
-  rm -rf "$DEMO" "$BACKUP" "$WID_SWIFT"
+  RUSTNOTES_DEMO_RESTORE=1 "$BIN" >/dev/null 2>&1 & pid=$!; sleep 4; kill "$pid" 2>/dev/null || true; wait "$pid" 2>/dev/null || true
+  rm -rf "$DEMO" "$BACKUP" "$(dirname "$WID_SWIFT")"
   echo "Ripristinato config.json e impostazioni."
 }
 trap restore EXIT
@@ -102,7 +102,7 @@ shoot() { # nome scena settings_json
     echo "  cattura negata: concedi 'Registrazione schermo' al terminale (Impostazioni di Sistema > Privacy e sicurezza)"
     rm -f "$OUT/$name.png"
   fi
-  kill "$pid" 2>/dev/null || true; sleep 1
+  kill "$pid" 2>/dev/null || true; wait "$pid" 2>/dev/null || true; sleep 1
 }
 
 mkdir -p "$OUT"

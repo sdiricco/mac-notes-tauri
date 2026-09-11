@@ -3,9 +3,21 @@
 A simple, local-first notes app in the spirit of Apple Notes, for macOS, Windows and Linux.
 Free and open source (MIT), no account, no cloud, no telemetry: your notes are files on your disk.
 
-> **Status: early.** Version 0.9.x. macOS is used daily by the author; Windows and
+> **Status: public beta (0.x).** macOS is used daily by the author; Windows and
 > Linux builds are produced by CI but have **not yet been run by a human**. See
 > [Known limitations](#known-limitations) before you rely on it.
+
+**Website: [sdiricco.github.io/rustnotes](https://sdiricco.github.io/rustnotes/)**
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/editor-dark.png">
+  <img alt="RustNotes editor" src="docs/assets/editor-light.png" width="900">
+</picture>
+
+<p>
+  <img alt="Search across all notes" src="docs/assets/search-dark.png" width="445">
+  <img alt="Settings" src="docs/assets/settings-light.png" width="445">
+</p>
 
 ## Features
 

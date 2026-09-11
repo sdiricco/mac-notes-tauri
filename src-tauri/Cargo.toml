@@ -1,11 +1,11 @@
 [package]
 name = "rustnotes"
-version = "0.11.3"
+version = "0.12.0"
 description = "RustNotes: a simple, local-first notes app. Vue frontend, Rust backend (Tauri v2)."
 authors = ["Simone Di Ricco"]
 edition = "2021"
 license = "MIT"
-repository = "https://github.com/sdiricco/mac-notes-tauri"
+repository = "https://github.com/sdiricco/rustnotes"
 
 [lib]
 name = "rustnotes_lib"

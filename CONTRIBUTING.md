@@ -81,6 +81,21 @@ Data in development goes to the same directory as the packaged app (see the
 README). Back it up or point the app elsewhere before experimenting with the
 storage code.
 
+## Screenshots
+
+`scripts/screenshots.sh` produces the images used by the README and the landing
+page (`docs/`) from a demo data set, without touching your own notes: it points
+the app at a temporary folder through `config.json`, launches the release bundle
+once per scene using the env hooks in `src-tauri/src/demo.rs`, captures the
+window, then restores everything. macOS only; the terminal needs the Screen
+Recording permission, and RustNotes must not be running.
+
+## Landing page
+
+`docs/` is a static page served by GitHub Pages. The download button reads the
+latest release from the GitHub API, so it needs no update per version. Preview
+locally with any static server, e.g. `python3 -m http.server 8765 --directory docs`.
+
 ## Manual test checklist
 
 Native dialogs and menu items cannot be exercised by the unit tests. Before a

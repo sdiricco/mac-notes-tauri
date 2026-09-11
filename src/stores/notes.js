@@ -4,6 +4,7 @@ import { stripHtml, extractTitleFromHtml } from '../utils/markdown'
 import { api } from '../utils/api'
 import { useSettingsStore } from './settings'
 import { t, currentLocale } from '../i18n'
+import { buildWelcomeHtml } from '../utils/welcome'
 
 const ALL = 'all'
 const TRASH = 'trash'
@@ -132,10 +133,22 @@ export const useNotesStore = defineStore('notes', {
       const data = await api.loadData()
       this.folders = data.folders
       this.notes = data.notes
+      if (data.firstRun) this.seedFirstRun()
       this.selectedFolderId = ALL
       const firstNote = this.visibleNotes[0]
       this.selectedNoteId = firstNote ? firstNote.id : null
       this.ready = true
+    },
+
+    // Primo avvio (archivio appena inizializzato da Rust): la cartella di
+    // default prende il nome nella lingua dell'utente e nasce una nota di
+    // benvenuto. Solo qui, mai su un archivio esistente: chi punta l'app a
+    // una cartella gia' popolata non deve trovarsi note in piu'.
+    seedFirstRun() {
+      const folder = this.folders[0]
+      if (folder) this.renameFolder(folder.id, t('store.notes'))
+      const note = this.createNote(folder?.id || null)
+      this.updateNote(note.id, { content: buildWelcomeHtml() })
     },
 
     selectFolder(folderId) {

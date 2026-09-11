@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RustNotes — simple, local-first notes for macOS, Windows and Linux</title>
+<meta name="description" content="RustNotes is a simple notes app in the spirit of Apple Notes, for every desktop. Your notes stay on your disk. Free, open source, no account, no cloud.">
+<meta property="og:title" content="RustNotes">
+<meta property="og:description" content="Simple, local-first notes for macOS, Windows and Linux. Free and open source.">
+<meta property="og:image" content="https://sdiricco.github.io/rustnotes/assets/editor-light.png">
+<link rel="icon" href="assets/icon.png">
+<style>
+  :root {
+    --bg: #f6f6f6; --card: #ffffff; --text: #1a1a1a; --muted: #6e6e6e; --line: rgba(0,0,0,.1);
+    --accent: #1a1a1a; --accent-text: #ffffff; --soft: rgba(0,0,0,.05); --code: rgba(0,0,0,.06);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #1a1a1a; --card: #262626; --text: #f2f2f2; --muted: #9a9a9a; --line: rgba(255,255,255,.12);
+            --accent: #f2f2f2; --accent-text: #1a1a1a; --soft: rgba(255,255,255,.06); --code: rgba(255,255,255,.08); }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text);
+    font: 16px/1.55 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Ubuntu, "Helvetica Neue", Arial, sans-serif;
+    -webkit-font-smoothing: antialiased; }
+  a { color: inherit; }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 0 24px; }
+  header { display: flex; align-items: center; justify-content: space-between; padding: 22px 0; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 600; text-decoration: none; letter-spacing: -.01em; }
+  .brand img { width: 28px; height: 28px; border-radius: 7px; }
+  nav a { text-decoration: none; color: var(--muted); margin-left: 22px; font-size: 15px; }
+  nav a:hover { color: var(--text); }
+  .hero { padding: 56px 0 28px; text-align: center; }
+  .hero h1 { font-size: clamp(34px, 6vw, 56px); line-height: 1.08; letter-spacing: -.025em; margin: 0 0 18px; font-weight: 700; }
+  .hero p.lead { font-size: clamp(17px, 2.2vw, 21px); color: var(--muted); max-width: 640px; margin: 0 auto 30px; }
+  .cta { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; align-items: center; }
+  .btn { display: inline-flex; align-items: center; gap: 8px; padding: 12px 20px; border-radius: 10px; font-weight: 600; text-decoration: none;
+         border: 1px solid var(--line); background: var(--card); color: var(--text); font-size: 15px; }
+  .btn.primary { background: var(--accent); color: var(--accent-text); border-color: transparent; }
+  .btn:hover { filter: brightness(.97); }
+  .sub { font-size: 13px; color: var(--muted); margin-top: 12px; }
+  .sub a { color: var(--muted); }
+  .shot { margin: 44px auto 0; border-radius: 14px; overflow: hidden; border: 1px solid var(--line); box-shadow: 0 30px 80px rgba(0,0,0,.18); background: var(--card); }
+  .shot img { display: block; width: 100%; height: auto; }
+  section { padding: 64px 0 0; }
+  h2 { font-size: 26px; letter-spacing: -.02em; margin: 0 0 8px; }
+  .kicker { color: var(--muted); margin: 0 0 28px; font-size: 17px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 20px 22px; }
+  .card h3 { margin: 0 0 6px; font-size: 16px; }
+  .card p { margin: 0; color: var(--muted); font-size: 15px; }
+  pre, code { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 13.5px; }
+  pre { background: var(--code); border-radius: 10px; padding: 14px 16px; overflow-x: auto; margin: 0; }
+  pre span.c { color: var(--muted); }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 760px) { .two { grid-template-columns: 1fr; } }
+  .honest { border-left: 3px solid var(--line); padding-left: 18px; color: var(--muted); }
+  .honest li { margin: 6px 0; }
+  .honest strong { color: var(--text); }
+  footer { margin-top: 72px; padding: 28px 0 44px; border-top: 1px solid var(--line); color: var(--muted); font-size: 14px; display: flex; flex-wrap: wrap; gap: 8px 22px; justify-content: space-between; }
+  footer a { color: var(--muted); }
+  .picture-pair img.dark { display: none; }
+  @media (prefers-color-scheme: dark) { .picture-pair img.light { display: none; } .picture-pair img.dark { display: block; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <a class="brand" href="#"><img src="assets/icon.png" alt="">RustNotes</a>
+    <nav>
+      <a href="#features">Features</a>
+      <a href="#data">Your data</a>
+      <a href="#install">Install</a>
+      <a href="https://github.com/sdiricco/rustnotes">GitHub</a>
+    </nav>
+  </header>
+
+  <section class="hero" style="padding-top:40px">
+    <h1>Notes that stay yours.</h1>
+    <p class="lead">A simple notes app in the spirit of Apple Notes, for macOS, Windows and Linux. Everything lives on your disk. Free and open source, no account, no cloud.</p>
+    <div class="cta">
+      <a class="btn primary" id="dl" href="https://github.com/sdiricco/rustnotes/releases/latest">Download</a>
+      <a class="btn" href="https://github.com/sdiricco/rustnotes/releases/latest">All downloads</a>
+    </div>
+    <p class="sub" id="dl-sub">Latest release on GitHub · MIT license</p>
+
+    <div class="shot picture-pair">
+      <img class="light" src="assets/editor-light.png" alt="RustNotes editor, light theme" onerror="this.parentElement.style.display='none'">
+      <img class="dark" src="assets/editor-dark.png" alt="RustNotes editor, dark theme" onerror="this.parentElement.style.display='none'">
+    </div>
+  </section>
+
+  <section id="features">
+    <h2>Just notes.</h2>
+    <p class="kicker">The things a notes app should do, done quietly.</p>
+    <div class="grid">
+      <div class="card"><h3>Rich text, no fuss</h3><p>Headings, lists, checklists, tables, images and code blocks with syntax highlighting.</p></div>
+      <div class="card"><h3>Folders, favorites, trash</h3><p>Multi-select, drag to reorder, instant full-text search across every note.</p></div>
+      <div class="card"><h3>Markdown in and out</h3><p>Import a .md file, export one note or your whole library as Markdown files.</p></div>
+      <div class="card"><h3>Eight languages</h3><p>English, Italian, Spanish, French, German, Portuguese, Chinese, Japanese. Follows your system.</p></div>
+      <div class="card"><h3>Light and dark</h3><p>Follows your system, or pick one. Zoom the whole interface from the View menu.</p></div>
+      <div class="card"><h3>Small and native</h3><p>A Tauri app on the system webview: a few megabytes installed, one process, no bundled browser.</p></div>
+    </div>
+  </section>
+
+  <section id="data">
+    <h2>Your data is a folder.</h2>
+    <p class="kicker">One JSON file per note, on your disk, in a folder you can move.</p>
+    <div class="two">
+      <div class="card"><h3>No account, no server</h3><p>RustNotes never phones home, except for one anonymous request to GitHub to check for a newer version. There is nothing to sign up for and nothing to lose access to.</p></div>
+      <div class="card"><h3>Sync the way you already do</h3><p>Point the notes folder at iCloud Drive, Dropbox or Syncthing from Settings and use the same notes on every computer. A second machine pointed at the same folder simply adopts it.</p></div>
+    </div>
+  </section>
+
+  <section id="install">
+    <h2>Install</h2>
+    <p class="kicker">Download from the button above, or use Homebrew on macOS.</p>
+    <pre><span class="c"># Homebrew (macOS)</span>
+brew trust sdiricco/rustnotes      <span class="c"># once, required for third-party taps</span>
+brew install --cask sdiricco/rustnotes/rustnotes</pre>
+    <div style="height:28px"></div>
+    <h2 style="font-size:20px">The honest part</h2>
+    <ul class="honest">
+      <li><strong>The app is not code-signed.</strong> Certificates cost money every year and RustNotes is free and stays free. On macOS, right-click the app → Open the first time, or run <code>xattr -dr com.apple.quarantine "/Applications/RustNotes.app"</code>. Windows shows a SmartScreen warning.</li>
+      <li><strong>Windows and Linux builds are produced by CI but not yet tested by a human.</strong> They compile, they should run, and bug reports with screenshots are very welcome.</li>
+      <li><strong>This is a 0.x release.</strong> It is used daily on macOS by its author. Treat it as a public beta elsewhere.</li>
+    </ul>
+  </section>
+
+  <footer>
+    <span>RustNotes · MIT license · made by <a href="https://github.com/sdiricco">Simone Di Ricco</a></span>
+    <span><a href="https://github.com/sdiricco/rustnotes">Source</a> · <a href="https://github.com/sdiricco/rustnotes/issues">Issues</a> · <a href="https://github.com/sdiricco/rustnotes/releases">Releases</a></span>
+  </footer>
+</div>
+
+<script>
+// Pulsante di download: riconosce il sistema e prende l'asset giusto dall'ultima
+// release, cosi' la pagina non va toccata a ogni versione. Se qualcosa fallisce
+// il link resta quello alla pagina delle release.
+(async () => {
+  const ua = navigator.userAgent, plat = (navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || '';
+  const isMac = /Mac/i.test(plat), isWin = /Win/i.test(plat), isLinux = /Linux/i.test(plat) && !/Android/i.test(ua);
+  const label = isMac ? 'Download for macOS' : isWin ? 'Download for Windows' : isLinux ? 'Download for Linux' : 'Download';
+  const btn = document.getElementById('dl'), sub = document.getElementById('dl-sub');
+  btn.textContent = label;
+  try {
+    const r = await fetch('https://api.github.com/repos/sdiricco/rustnotes/releases/latest', { headers: { Accept: 'application/vnd.github+json' } });
+    if (!r.ok) return;
+    const rel = await r.json();
+    const pick = (re) => (rel.assets || []).find((a) => re.test(a.name));
+    const asset = isMac ? pick(/universal\.dmg$/) : isWin ? pick(/x64-setup\.exe$/) : isLinux ? pick(/amd64\.AppImage$/) : null;
+    if (asset) { btn.href = asset.browser_download_url; btn.textContent = `${label} · ${rel.tag_name}`; }
+    const mb = asset ? (asset.size / 1048576).toFixed(1) + ' MB · ' : '';
+    sub.innerHTML = `${mb}${rel.tag_name} · MIT license · <a href="${rel.html_url}">release notes</a>` + (isWin ? ' · <a href="' + rel.html_url + '">arm64 and .msi</a>' : isLinux ? ' · <a href="' + rel.html_url + '">.deb, .rpm, arm64</a>' : '');
+  } catch (_) { /* resta il link alle release */ }
+})();
+</script>
+</body>
+</html>

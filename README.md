@@ -24,11 +24,13 @@ Free and open source (MIT), no account, no cloud, no telemetry: your notes are f
 ### macOS (Homebrew)
 
 ```bash
-brew tap sdiricco/mac-notes
-brew install --cask mac-notes-tauri
+brew trust sdiricco/rustnotes      # Homebrew requires this once for third-party taps
+brew install --cask sdiricco/rustnotes/rustnotes
 ```
 
-Upgrade with `brew upgrade --cask mac-notes-tauri`.
+Upgrade with `brew upgrade --cask rustnotes`. If you installed the earlier
+`mac-notes-tauri` cask from the `sdiricco/mac-notes` tap, run the `brew trust`
+line above once and `brew upgrade` migrates it to the new name on its own.
 
 The app is **not signed with an Apple Developer ID**. On first launch macOS says the
 developer cannot be verified. Right-click the app → Open, or from a terminal:
@@ -40,7 +42,7 @@ xattr -dr com.apple.quarantine "/Applications/RustNotes.app"
 ### Windows and Linux
 
 Download the installer for your platform from the
-[Releases](https://github.com/sdiricco/mac-notes-tauri/releases) page
+[Releases](https://github.com/sdiricco/rustnotes/releases) page
 (NSIS `.exe` for Windows, `.AppImage` / `.deb` for Linux, x64 and arm64).
 
 Windows will show a SmartScreen warning because the installer is not code-signed.
@@ -127,14 +129,14 @@ Push a tag `vX.Y.Z`. The release workflow builds macOS (universal), Windows
 (x64, arm64) and Linux (x64, arm64) and creates a **draft** GitHub release. The
 in-app update check reads only the "latest release" endpoint, which ignores drafts:
 nobody sees a version until you publish it from the Releases page. Update the
-Homebrew cask in the tap at the same time.
+Homebrew cask in the `sdiricco/homebrew-rustnotes` tap at the same time.
 
 ## History
 
 RustNotes started as [mac-notes](https://github.com/sdiricco/mac-notes), an
 Electron app, and was ported to Tauri v2 with the Vue frontend left almost
-untouched and the backend rewritten in Rust. The GitHub repository still carries
-the porting-era name `mac-notes-tauri`.
+untouched and the backend rewritten in Rust. Until version 0.11 the project was
+called "Mac Notes Tauri"; old links to `sdiricco/mac-notes-tauri` redirect here.
 
 ## License
 

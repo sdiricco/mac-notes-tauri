@@ -295,7 +295,7 @@
                 <Icon :icon="updateCheck.available ? 'lucide:arrow-up-circle' : 'lucide:check-circle'" />
                 <span v-if="updateCheck.available">
                   {{ t('settings.about.available', { version: updateCheck.latestVersion }) }}
-                  <code>brew upgrade --cask mac-notes-tauri</code>
+                  <code>brew upgrade --cask rustnotes</code>
                 </span>
                 <span v-else>{{ t('settings.about.upToDate') }}</span>
               </div>

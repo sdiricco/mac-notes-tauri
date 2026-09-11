@@ -2,6 +2,7 @@
 //! nome del canale IPC Electron originale, per rendere il porting di
 //! `utils/api.js` una traduzione riga per riga.
 
+mod demo;
 mod file_transfer;
 mod menu;
 mod store;
@@ -152,6 +153,7 @@ pub fn run() {
             if let Some(window) = app.get_webview_window("main") {
                 titlebar::install(&window);
             }
+            demo::install(&handle);
 
             // Zoom salvato: riapplicato subito, prima che la pagina si veda.
             let saved = store::zoom_get(&handle);

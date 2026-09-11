@@ -286,8 +286,11 @@ fn ensure_dirs_in(root: &Path) -> Result<(), String> {
     Ok(())
 }
 
+/// Nome in inglese come segnaposto: al primo avvio il frontend lo rinomina
+/// nella lingua dell'utente (vedi notes.js, seedFirstRun), che qui non e'
+/// ancora nota.
 fn default_folders() -> Value {
-    json!([{ "id": uuid_v4(), "name": "Note", "createdAt": now_ms() }])
+    json!([{ "id": uuid_v4(), "name": "Notes", "createdAt": now_ms() }])
 }
 
 /// UUID v4 senza dipendenza esterna: qui basta un identificatore unico, non
@@ -319,6 +322,9 @@ pub fn load_data_in(root: &Path) -> Result<Value, String> {
     ensure_dirs_in(root)?;
 
     let ffile = folders_file_in(root);
+    // Primo avvio = archivio mai inizializzato: il frontend ne approfitta per
+    // creare la nota di benvenuto e tradurre la cartella di default.
+    let first_run = !ffile.exists();
     let folders: Value = if ffile.exists() {
         fs::read_to_string(&ffile)
             .ok()
@@ -348,7 +354,7 @@ pub fn load_data_in(root: &Path) -> Result<Value, String> {
         }
     }
 
-    Ok(json!({ "folders": folders, "notes": notes }))
+    Ok(json!({ "folders": folders, "notes": notes, "firstRun": first_run }))
 }
 
 pub fn save_note(app: &AppHandle, note: &Value) -> Result<(), String> {
@@ -423,8 +429,11 @@ mod tests {
         assert_eq!(data["notes"].as_array().unwrap().len(), 0);
         let folders = data["folders"].as_array().unwrap();
         assert_eq!(folders.len(), 1);
-        assert_eq!(folders[0]["name"], "Note");
+        assert_eq!(folders[0]["name"], "Notes");
+        assert_eq!(data["firstRun"], true);
         assert!(folders_file_in(tmp.path()).exists());
+        let again = load_data_in(tmp.path()).unwrap();
+        assert_eq!(again["firstRun"], false);
     }
 
     #[test]

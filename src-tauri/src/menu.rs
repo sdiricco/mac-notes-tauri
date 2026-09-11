@@ -457,7 +457,7 @@ pub fn handle_menu_event(app: &AppHandle, event_id: &str) {
             use tauri_plugin_opener::OpenerExt;
             let _ = app
                 .opener()
-                .open_url("https://github.com/sdiricco/mac-notes-tauri", None::<&str>);
+                .open_url("https://github.com/sdiricco/rustnotes", None::<&str>);
         }
         _ => {}
     }

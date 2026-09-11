@@ -8,5 +8,6 @@ import sidebar from './sidebar'
 import editor from './editor'
 import quill from './quill'
 import settings from './settings'
+import welcome from './welcome'
 
-export default { common, app, store, header, search, list, sidebar, editor, quill, settings }
+export default { common, app, store, header, search, list, sidebar, editor, quill, settings, welcome }
